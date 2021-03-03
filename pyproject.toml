@@ -8,6 +8,13 @@ authors = ["Harald Vohringer <harald.voeh@gmail.com>"]
 python = "^3.9"
 
 [tool.poetry.dev-dependencies]
+pytest = "^6.2.2"
+pytest-cov = "^2.11.1"
+black = "^20.8b1"
+isort = "^5.7.0"
+flake8 = "^3.8.4"
+bandit = "^1.7.0"
+safety = "^1.10.3"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
