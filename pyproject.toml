@@ -10,6 +10,7 @@ numpy = "^1.20.1"
 numpyro = "^0.5.0"
 geopandas = "^0.9.0"
 pandas = "^1.2.3"
+uk-covid19 = "^1.2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.2"

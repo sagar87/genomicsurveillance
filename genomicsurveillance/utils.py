@@ -8,7 +8,6 @@ def create_spline_basis(
     """
     Creates a spline basis functions.
 
-
     :param x: array of size num time steps
     :param knot_list: indices of knots
     :param num_knots: number of knots
@@ -16,7 +15,7 @@ def create_spline_basis(
     :param add_intercept: appends an additional column of ones, defaults
         to False
     :return: list of knots, basis functions
-    :rtype: Union[np.ndarray, np.ndarray]
+    :rtype: np.ndarray
     """
     assert ((knot_list is None) and (num_knots is not None)) or (
         (knot_list is not None) and (num_knots is None)
