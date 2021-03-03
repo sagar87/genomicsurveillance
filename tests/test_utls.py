@@ -1,4 +1,5 @@
 import numpy as np
+
 from genomicsurveillance.utils import create_spline_basis
 
 

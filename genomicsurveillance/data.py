@@ -1,6 +1,8 @@
+import io
+
 import geopandas as gpd
 import pandas as pd
-import io
+
 from genomicsurveillance.config import Files
 
 
