@@ -1,9 +1,9 @@
 """
-Random Quote Generator
-======================
+GenomicSurveillance
+===================
 
-Get random quote from our database of programming wisdom
+Models to estimate the incidence of virus variants.
 """
-from .get_quote import get_quote
+from .utils import create_spline_basis
 
-__all__ = ["get_quote"]
+__all__ = ["create_spline_basis"]
