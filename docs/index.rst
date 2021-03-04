@@ -6,10 +6,11 @@
 Welcome to genomicsurveillance's documentation!
 ===============================================
 
-.. automodule:: genomicsurveillance
-    :members:
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
 
-
+   reference
 
 Indices and tables
 ==================
