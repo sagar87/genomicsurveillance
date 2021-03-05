@@ -18,7 +18,14 @@ sys.path.insert(0, os.path.abspath(".."))
 from unittest import mock
 
 # Mock modules because it fails to build in readthedocs
-MOCK_MODULES = ["numpy", "pandas", "scipy", "scipy.interpolate", "matplotlib", "matplotlib.pyplot"]
+MOCK_MODULES = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "scipy.interpolate",
+    "matplotlib",
+    "matplotlib.pyplot",
+]
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 
