@@ -12,6 +12,10 @@ from genomicsurveillance.utils import create_spline_basis, is_nan_row
 
 
 class Sites:
+    """
+    Helper class to consistently label each sampling site in the model.
+    """
+
     RHO = "rho"
 
     MU_COUNTRY = "mu_country"
@@ -50,32 +54,58 @@ class Sites:
 
 
 class IndependentMultiLineage(SVIModel):
+    """
+    WARNING: EXPERIMENTAL - The interface may change in future
+
+    :param cases: A two-dimensional array with cases counts (locations, time)
+    :param lineages: A three dimensional array containing the lineage the counts
+        for each lineages.shape = (location, lineage_time, lineages)
+    :param lineages_date:
+    :param population: An array indicating the population in each location
+    :param basis: The spline basis function an its derivative (2, time, num_basis).
+    :param tau: Generation time in days.
+    :param init_scale: Scaling factor of variational distributions
+    :param beta_loc: Mean of the spline regression coefficients.
+    :param beta_scale: Standard deviation of the spline regression coefficents.
+    :param mu_b_scale: Standard deviation of the lineage transmissibility parameter.
+    :param b_scale: Standard deviation of location specific lineage transmissibility.
+    :param c_scale: Standard deviation of the lineage/location specific offset parameter.
+    :param fit_rho: Fit the overdispersion in each location or use a fixed value.
+    :param rho_loc: Mean of the overdispersion parameter, defaults to np.log(10).
+    :param rho_scale: Standard deviation of the overdispersion parameter.
+    :param multinomial_scale: Weight of the multinomial log likelihood.
+    :param time_scale: Parameter to scale the variance of mu_b.
+    :param exclude: Exclude missing lineages during the analysis
+    :kwargs: SVI Handler arguments.
+    """
+
     def __init__(
         self,
-        cases,
-        lineages,
-        lineage_dates,
-        population,
+        cases: np.ndarray,
+        lineages: np.ndarray,
+        lineage_dates: np.ndarray,
+        population: np.ndarray,
         basis=None,
-        tau=5.0,
-        init_scale=0.1,
-        fit_rho=False,
-        beta_loc=-10.0,
-        beta_scale=5.0,
-        mu_b_scale=np.log(2) / 5,
-        b_scale=0.01,
-        c_scale=5.0,
-        rho_loc=np.log(10.0),
-        rho_scale=1.0,
-        multinomial_scale=1.0,
-        time_scale=100.0,
-        exclude=True,
+        tau: float = 5.0,
+        init_scale: float = 0.1,
+        beta_loc: float = -10.0,
+        beta_scale: float = 5.0,
+        mu_b_scale: float = np.log(2) / 5,
+        b_scale: float = 0.01,
+        c_scale: float = 5.0,
+        fit_rho: bool = False,
+        rho_loc: float = np.log(10.0),
+        rho_scale: float = 1.0,
+        multinomial_scale: float = 1.0,
+        time_scale: float = 100.0,
+        exclude: bool = True,
         *args,
         **kwargs
     ):
         """
-        RelaxedMultiLineage model
+        Constructor.
         """
+        # TODO: More sanity checks
         assert (
             cases.shape[0] == lineages.shape[0]
         ), "cases and lineages must have the number of location"
@@ -140,11 +170,13 @@ class IndependentMultiLineage(SVIModel):
         ).astype(int)
 
     def _expand(self, array: jnp.ndarray, index, shape: tuple) -> jnp.ndarray:
+        """Creates an a zero array with shape `shape` and fills it with `array` at index."""
         expanded_array = jnp.zeros(shape)
         expanded_array = index_update(expanded_array, index, array)
         return expanded_array
 
-    def _pad(self, array, func=jnp.zeros):
+    def _pad(self, array: jnp.ndarray, func=jnp.zeros):
+        """Adds an additional column to an three dimensional array."""
         return jnp.concatenate([array, func((array.shape[0], 1, 1))], -1)
 
     def model(self):

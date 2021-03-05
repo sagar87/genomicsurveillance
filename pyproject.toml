@@ -8,7 +8,7 @@ description = ""
 authors = ["Harald Vohringer <harald.voeh@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.6"
 numpy = "^1.20.1"
 numpyro = "^0.5.0"
 pandas = "^1.2.3"
