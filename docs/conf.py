@@ -15,27 +15,6 @@ import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
-from unittest.mock import MagicMock
-
-
-class Mock(MagicMock):
-    @classmethod
-    def __getattr__(cls, name):
-        return MagicMock()
-
-
-# MOCK_MODULES = ['numpy', 'scipy', 'matplotlib', 'matplotlib.pyplot', 'tensorflow', 'h5py', 'scipy.spatial.distance', 'scipy.spatial', 'scipy.optimize', 'scipy.misc', 'scipy.special', 'scipy.sparse', 'scipy.linalg', 'scipy.stats', 'scipy.sparse.base', 'sklearn.utils.murmurhash', 'numpy.core', 'numpy.core.numeric', 'scipy.sparse.linalg']
-MOCK_MODULES = ["tensorflow", "click", "h5py", "tqdm", "scipy", "scipy.interpolate"]
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
-
-
-# from unittest import mock
-
-# # Mock modules because it fails to build in readthedocs
-# MOCK_MODULES = ["numpy", "scipy", "scipy.interpolate", "matplotlib", "matplotlib.pyplot"]
-# for mod_name in MOCK_MODULES:
-#     sys.modules[mod_name] = mock.Mock()
-
 # -- Project information -----------------------------------------------------
 
 project = "genomicsurveillance"

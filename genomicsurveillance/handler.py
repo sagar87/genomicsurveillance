@@ -38,10 +38,12 @@ class Posterior(object):
 
     @lru_cache(maxsize=128)
     def hpdi(self, param, *args, **kwargs):
+        """Returns the highest predictive density interval of param."""
         return hpdi(self.data[param][tuple([slice(None), *args])], **kwargs)
 
     @lru_cache(maxsize=128)
     def quantiles(self, param, *args, **kwargs):
+        """Returns the quantiles of param."""
         return jnp.quantile(
             self.data[param][tuple([slice(None), *args])],
             jnp.array([0.025, 0.975]),
@@ -49,15 +51,19 @@ class Posterior(object):
         )
 
     def qlower(self, param, *args, **kwargs):
+        """Returns the quantile lower bound of param."""
         return self.quantiles(param, *args, **kwargs)[0]
 
     def qupper(self, param, *args, **kwargs):
+        """Returns the quantile upper bound of param."""
         return self.quantiles(param, *args, **kwargs)[1]
 
     def lower(self, param, *args, **kwargs):
+        """Returns the HPDI lower bound of param."""
         return self.hpdi(param, *args, **kwargs)[0]
 
     def upper(self, param, *args, **kwargs):
+        """Returns the HPDI upper bound of param."""
         return self.hpdi(param, *args, **kwargs)[1]
 
     def ci(self, param, *args, **kwargs):
@@ -68,10 +74,20 @@ class Posterior(object):
 
 class SVIHandler(object):
     """
-    Helper object that abstracts some of numpyros complexities.
+    Helper object that abstracts some of numpyros complexities. Inspired
+    by an implementation of Florian Wilhelm.
 
-    :param model: a numpyro model
-    :param guide: a numpyro guide
+    :param model: A numpyro model.
+    :param guide: A numpyro guide.
+    :param loss: Loss function, defaults to Trace_ELBO.
+    :param lr: Learning rate, defaults to 0.01.
+    :param rng_key: Random seed, defaults to 254.
+    :param num_epochs: Number of epochs to train the model, defaults to 5000.
+    :param num_samples: Number of posterior samples.
+    :param log_func: Logging function, defaults to print.
+    :param log_freq: Frequency of logging, defaults to 0 (no logging).
+    :param to_numpy: Convert the posterior distribution to numpy array(s),
+        defaults to True.
     """
 
     def __init__(
@@ -171,6 +187,11 @@ class SVIHandler(object):
 
 
 class SVIModel(SVIHandler):
+    """
+    Abstract class of the SVI handler. To be used classes that implement
+    a numpyro model and guide.
+    """
+
     def __init__(self, **kwargs):
         super().__init__(self.model, self.guide, **kwargs)
 
