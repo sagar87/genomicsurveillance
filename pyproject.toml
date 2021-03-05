@@ -1,5 +1,8 @@
 [tool.poetry]
 name = "genomicsurveillance"
+packages = [
+    { include = "genomicsurveillance" },
+]
 version = "0.1.0"
 description = ""
 authors = ["Harald Vohringer <harald.voeh@gmail.com>"]
@@ -28,3 +31,4 @@ uk-covid19 = "^1.2.0"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
