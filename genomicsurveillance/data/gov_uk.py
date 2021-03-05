@@ -2,7 +2,8 @@ import pandas as pd
 from uk_covid19 import Cov19API
 
 from genomicsurveillance.config import GovUKAPI
-from genomicsurveillance.data import get_meta_data
+
+from .meta_data import get_meta_data
 
 
 def get_specimen(ltla_list: list = None):
