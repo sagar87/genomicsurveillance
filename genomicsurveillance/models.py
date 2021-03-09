@@ -37,10 +37,10 @@ class Sites:
     B_1 = "b_1"
     C_1 = "c_1"
 
-    MU_1 = "mu_1"
+    MU_1 = "mu_lin"
     MU = "mu"
 
-    LAMB_1 = "lamb_1"
+    LAMB_1 = "lamb_lin"
     LAMB = "lamb"
 
     R_1 = "R_1"
@@ -61,7 +61,8 @@ class IndependentMultiLineage(SVIModel):
     :param lineages: A three dimensional array containing the lineage the counts
         for each lineages.shape = (location, lineage_time, lineages)
     :param lineages_date:
-    :param population: An array indicating the population in each location
+    :param population: An array indicating the population in each location.
+    :param regions: A list of index arrays indicating higher order regions.
     :param basis: The spline basis function an its derivative (2, time, num_basis).
     :param tau: Generation time in days.
     :param init_scale: Scaling factor of variational distributions
@@ -85,6 +86,7 @@ class IndependentMultiLineage(SVIModel):
         lineages: np.ndarray,
         lineage_dates: np.ndarray,
         population: np.ndarray,
+        regions=None,
         basis=None,
         tau: float = 5.0,
         init_scale: float = 0.1,
@@ -100,7 +102,7 @@ class IndependentMultiLineage(SVIModel):
         time_scale: float = 100.0,
         exclude: bool = True,
         *args,
-        **kwargs
+        **kwargs,
     ):
         """
         Constructor.
@@ -114,6 +116,7 @@ class IndependentMultiLineage(SVIModel):
         self.lineages = lineages
         self.lineage_dates = lineage_dates
         self.population = population
+        self.regions = regions
 
         self.tau = tau
         self.init_scale = init_scale
@@ -178,6 +181,80 @@ class IndependentMultiLineage(SVIModel):
     def _pad(self, array: jnp.ndarray, func=jnp.zeros):
         """Adds an additional column to an three dimensional array."""
         return jnp.concatenate([array, func((array.shape[0], 1, 1))], -1)
+
+    def aggregate_guide(self, i, array):
+        num_regions = len(np.unique(array))
+        num_basis = self.B.shape[-1]
+        # mean / sd for parameter s
+        beta_i_loc = npy.param(
+            f"beta_{i}" + Sites.LOC, self.beta_loc * jnp.ones((num_regions, num_basis))
+        )
+        beta_i_scale = npy.param(
+            f"beta_{i}" + Sites.SCALE,
+            self.init_scale
+            * self.beta_scale
+            * jnp.stack(num_regions * [jnp.eye(num_basis)]),
+            constraint=dist.constraints.lower_cholesky,
+        )
+
+        # cov = jnp.matmul(β_σ, jnp.transpose(β_σ, (0, 2, 1)))
+        npy.sample(
+            f"beta_{i}", dist.MultivariateNormal(beta_i_loc, scale_tril=beta_i_scale)
+        )  # cov
+
+    def aggregate_model(self, i, array):
+        num_regions = len(np.unique(array))
+        num_basis = self.B.shape[-1]
+        rho = self.rho_loc
+        # Regression coefficients (num_location x num_basis)
+        beta_i = npy.sample(
+            f"beta_{i}",
+            dist.MultivariateNormal(
+                self.beta_loc,
+                jnp.tile(self.beta_scale, (num_regions, num_basis, 1))
+                * jnp.eye(num_basis).reshape(1, num_basis, num_basis),
+            ),
+        )
+
+        N_i = jnp.array(
+            [self.population[array == j].sum(0) for j in range(num_regions)]
+        )
+        f_i_lin = jnp.stack(
+            [jnp.nansum(self.f_lin[array == j], 0) for j in range(num_regions)], 0
+        )
+        f_i = f_i_lin.sum(-1, keepdims=True)
+        p_i = npy.deterministic(f"p_{i}", f_i_lin / f_i)
+        l_i = jnp.stack(
+            [jnp.nansum(self.lineages[array == j], 0) for j in range(num_regions)], 0
+        )
+
+        g_i = jnp.exp(beta_i @ self.B[0].T)
+        mu_i = g_i * f_i.squeeze()
+
+        npy.deterministic(
+            f"lamb_{i}_lin", N_i.reshape(-1, 1, 1) * g_i[..., jnp.newaxis] * f_i_lin
+        )
+        lamb_i = npy.deterministic(f"lamb_{i}", N_i.reshape(-1, 1) * mu_i)
+
+        npy.sample(
+            f"lineage_{i}",
+            MultinomialProbs(
+                p_i[:, self.lineage_dates],
+                total_count=l_i.sum(-1),
+                scale=self.multinomial_scale,
+            ),
+            obs=l_i,
+        )
+
+        specimen_i = jnp.stack(
+            [jnp.nansum(self.cases[array == j], 0) for j in range(num_regions)], 0
+        )
+
+        npy.sample(
+            f"specimen_{i}",
+            NegativeBinomial(lamb_i, jnp.exp(rho)),  # jnp.clip(, 1e-6, 1e6)
+            obs=specimen_i,
+        )
 
     def model(self):
         """The model."""
@@ -286,13 +363,13 @@ class IndependentMultiLineage(SVIModel):
         )
 
         # Lineage specific regression coefficients (num_ltla x num_basis x num_lin)
-        f_lin = jnp.exp(b_1 * jnp.arange(num_time).reshape(1, -1, 1) + c_1)
-        f = f_lin.sum(-1, keepdims=True)
+        self.f_lin = jnp.exp(b_1 * jnp.arange(num_time).reshape(1, -1, 1) + c_1)
+        f = self.f_lin.sum(-1, keepdims=True)
 
         if self.exclude:
-            p = npy.deterministic(Sites.P, self._missing_lineage_obs * (f_lin / f))
+            p = npy.deterministic(Sites.P, self._missing_lineage_obs * (self.f_lin / f))
         else:
-            p = npy.deterministic(Sites.P, f_lin / f)
+            p = npy.deterministic(Sites.P, self.f_lin / f)
 
         g = jnp.exp(beta_0 @ self.B[0].T)
         mu = g * f.squeeze()
@@ -317,10 +394,14 @@ class IndependentMultiLineage(SVIModel):
             obs=self.lineages[self._nan_idx],
         )
 
+        if self.regions is not None:
+            for i, array in enumerate(self.regions):
+                self.aggregate_model(i + 1, array)
+
         # deterministic sites
         npy.deterministic(
             Sites.LAMB_1,
-            self.population.reshape(-1, 1, 1) * g[..., jnp.newaxis] * f_lin,
+            self.population.reshape(-1, 1, 1) * g[..., jnp.newaxis] * self.f_lin,
         )
         npy.deterministic("G", beta_0 @ self.B[1].T)
         npy.deterministic(
@@ -364,6 +445,10 @@ class IndependentMultiLineage(SVIModel):
         npy.sample(
             Sites.BETA_0, dist.MultivariateNormal(beta_0_loc, scale_tril=beta_0_scale)
         )  # cov
+
+        if self.regions is not None:
+            for i, array in enumerate(self.regions):
+                self.aggregate_guide(i + 1, array)
 
         # mean / sd for parameter s
         #         beta_1_loc = npy.param(
