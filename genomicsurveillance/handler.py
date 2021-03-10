@@ -3,6 +3,7 @@ from functools import lru_cache
 import jax.numpy as jnp
 import numpy as np
 from jax import lax, random
+from jax.experimental import host_callback
 from numpyro import optim
 from numpyro.diagnostics import hpdi
 from numpyro.infer import SVI, Predictive, Trace_ELBO
@@ -126,8 +127,21 @@ class SVIHandler(object):
         self.log_func(msg)
 
     def _fit(self, epochs, *args):
+
         return lax.scan(
-            lambda state, i: self.svi.update(state, *args),
+            lambda state, i: (
+                self.svi.update(
+                    lax.cond(
+                        i % self.log_freq == 0,
+                        lambda _: host_callback.id_tap(
+                            _print_consumer, (i, self.num_epochs), result=state
+                        ),
+                        lambda _: state,
+                        operand=None,
+                    ),
+                    *args,
+                )
+            ),
             self.init_state,
             jnp.arange(epochs),
         )
@@ -139,26 +153,12 @@ class SVIHandler(object):
 
     def fit(self, *args, **kwargs):
         num_epochs = kwargs.get("num_epochs", self.num_epochs)
-        log_freq = kwargs.get("log_freq", self.log_freq)
 
         if self.init_state is None:
             self.init_state = self.svi.init(self.rng_key, *args)
 
-        if log_freq <= 0:
-            state, loss = self._fit(num_epochs, *args)
-            self._update_state(state, loss)
-        else:
-            steps, rest = num_epochs // log_freq, num_epochs % log_freq
-
-            for step in range(steps):
-                state, loss = self._fit(log_freq, *args)
-                self._log(log_freq * (step + 1), loss[-1])
-                self._update_state(state, loss)
-
-            if rest > 0:
-                state, loss = self._fit(rest, *args)
-                self._update_state(state, loss)
-
+        state, loss = self._fit(num_epochs, *args)
+        self._update_state(state, loss)
         self.params = self.svi.get_params(state)
 
         predictive = Predictive(
@@ -200,3 +200,10 @@ class SVIModel(SVIHandler):
 
     def guide(self):
         raise NotImplementedError()
+
+
+def _print_consumer(arg, transform):
+    iter_num, num_samples = arg
+    print(
+        f"SVI step {iter_num:,} / {num_samples:,} | {iter_num/num_samples * 100:.0f} %"
+    )
