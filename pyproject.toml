@@ -3,13 +3,12 @@ name = "genomicsurveillance"
 packages = [
     { include = "genomicsurveillance" },
 ]
-version = "0.1.1"
+version = "0.1.2"
 description = ""
 authors = ["Harald Vohringer <harald.voeh@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.7.1"
-numpy = "^1.20.1"
 numpyro = "^0.5.0"
 pandas = "^1.2.3"
 sphinx = {version = "^3", optional = true}
