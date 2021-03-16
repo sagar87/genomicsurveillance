@@ -2,6 +2,13 @@
 History
 *******
 
+0.1.3 (2021-03-10)
+==================
+
+* Helper functions to process lineage data.
+* Automated knot generation.
+
+
 0.1.2 (2021-03-10)
 ==================
 
