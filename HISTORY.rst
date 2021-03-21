@@ -2,6 +2,14 @@
 History
 *******
 
+0.1.4 (2021-03-21)
+==================
+
+* Reparameterised model.
+* SVIHandler allows to dump params.
+* Refactored model.py.
+
+
 0.1.3 (2021-03-10)
 ==================
 

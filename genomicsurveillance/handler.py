@@ -1,12 +1,16 @@
+import pickle
 from functools import lru_cache
+from typing import IO
 
 import jax.numpy as jnp
 import numpy as np
 from jax import lax, random
 from jax.experimental import host_callback
+from jax.experimental.optimizers import OptimizerState
 from numpyro import optim
 from numpyro.diagnostics import hpdi
 from numpyro.infer import SVI, Predictive, Trace_ELBO
+from numpyro.infer.svi import SVIState
 
 from genomicsurveillance.types import Guide, Model
 
@@ -102,7 +106,7 @@ class SVIHandler(object):
         num_epochs: int = 5000,
         num_samples: int = 1000,
         log_func=print,
-        log_freq=0,
+        log_freq=1000,
         to_numpy: bool = True,
     ):
         self.model = model
@@ -126,24 +130,22 @@ class SVIHandler(object):
         msg = f"epoch: {str(epoch).rjust(n_digits)} loss: {loss: 16.4f}"
         self.log_func(msg)
 
-    def _fit(self, epochs, *args):
+    def _fit(self, *args):
+        def _step(state, i, *args):
+            state = lax.cond(
+                i % self.log_freq == 0,
+                lambda _: host_callback.id_tap(
+                    _print_consumer, (i, self.num_epochs), result=state
+                ),
+                lambda _: state,
+                operand=None,
+            )
+            return self.svi.update(state, *args)
 
         return lax.scan(
-            lambda state, i: (
-                self.svi.update(
-                    lax.cond(
-                        i % self.log_freq == 0,
-                        lambda _: host_callback.id_tap(
-                            _print_consumer, (i, self.num_epochs), result=state
-                        ),
-                        lambda _: state,
-                        operand=None,
-                    ),
-                    *args,
-                )
-            ),
+            lambda state, i: _step(state, i, *args),
             self.init_state,
-            jnp.arange(epochs),
+            jnp.arange(self.num_epochs),
         )
 
     def _update_state(self, state, loss):
@@ -152,12 +154,12 @@ class SVIHandler(object):
         self.loss = loss if self.loss is None else jnp.concatenate([self.loss, loss])
 
     def fit(self, *args, **kwargs):
-        num_epochs = kwargs.get("num_epochs", self.num_epochs)
+        self.num_epochs = kwargs.get("num_epochs", self.num_epochs)
 
         if self.init_state is None:
             self.init_state = self.svi.init(self.rng_key, *args)
 
-        state, loss = self._fit(num_epochs, *args)
+        state, loss = self._fit(*args)
         self._update_state(state, loss)
         self.params = self.svi.get_params(state)
 
@@ -170,7 +172,7 @@ class SVIHandler(object):
 
         self.posterior = Posterior(predictive(self.rng_key, *args), self.to_numpy)
 
-    def get_posterior_predictive(self, *args, **kwargs):
+    def predict(self, *args, **kwargs):
         """kwargs -> Predictive, args -> predictive"""
         num_samples = kwargs.pop("num_samples", self.num_samples)
         rng_key = kwargs.pop("rng_key", self.rng_key)
@@ -184,6 +186,29 @@ class SVIHandler(object):
         )
 
         self.predictive = Posterior(predictive(rng_key, *args), self.to_numpy)
+
+    @property
+    def optim_state(self) -> OptimizerState:
+        """Current optimizer state"""
+        assert self.state is not None, "'init_svi' needs to be called first"
+        return self.state.optim_state
+
+    @optim_state.setter
+    def optim_state(self, state: OptimizerState):
+        """Set current optimizer state"""
+        self.state = SVIState(state, self.rng_key)
+
+    def dump_optim_state(self, fh: IO):
+        """Pickle and dump optimizer state to file handle"""
+        pickle.dump(optim.optimizers.unpack_optimizer_state(self.optim_state[1]), fh)
+        return self
+
+    def dump_params(self, file_name: str):
+        assert self.params is not None, "'init_svi' needs to be called first"
+        pickle.dump(self.params, open(file_name, "wb"))
+
+    def load_params(self, file_name):
+        self.params = pickle.load(open(file_name, "rb"))
 
 
 class SVIModel(SVIHandler):

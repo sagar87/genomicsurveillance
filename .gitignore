@@ -3,5 +3,6 @@ __pycache__
 docs/_build
 notebooks/*.csv
 notebooks/*.txt
+notebooks/*.pkl
 notebooks/sandbox.ipynb
 notebooks/.ipynb_checkpoints
