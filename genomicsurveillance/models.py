@@ -273,14 +273,24 @@ class MultiLineage(SVIModel):
         )
 
         if self.regions is not None:
-            lamb_lin = self.population.reshape(-1, 1, 1) * jnp.exp(mu[..., jnp.newaxis]) * p
+            lamb_lin = (
+                self.population.reshape(-1, 1, 1) * jnp.exp(mu[..., jnp.newaxis]) * p
+            )
             for i, region in enumerate(self.regions):
-                reg = np.array([region[self._nan_idx] == i for i in np.unique(region)]).astype("float") # Indicator of regions
-        
-                lamb_reg = jnp.einsum('ij,jkl->ikl', reg, lamb_lin[self._nan_idx][:, self.lineage_dates])
-                npy.deterministic(Sites.P + f'_{i}', lamb_reg / lamb_reg.sum(-1, keepdims=True))  ## can non multi-logiostic
+                reg = np.array(
+                    [region[self._nan_idx] == i for i in np.unique(region)]
+                ).astype(
+                    "float"
+                )  # Indicator of regions
 
-        npy.deterministic('sa', jnp.exp(b * self.tau))
+                lamb_reg = jnp.einsum(
+                    "ij,jkl->ikl", reg, lamb_lin[self._nan_idx][:, self.lineage_dates]
+                )
+                npy.deterministic(
+                    Sites.P + f"_{i}", lamb_reg / lamb_reg.sum(-1, keepdims=True)
+                )
+
+        npy.deterministic("sa", jnp.exp(b * self.tau))
 
     def guide(self):
         num_ltla = self.cases.shape[0]
