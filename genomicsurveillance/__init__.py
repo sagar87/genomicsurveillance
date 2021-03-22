@@ -5,7 +5,7 @@ GenomicSurveillance
 Models to estimate the incidence of virus variants.
 """
 
-from .models import IndependentMultiLineage, MultiLineage
+from .models import MultiLineage
 from .utils import (
     aggregate_tensor,
     alias_lineages,
@@ -26,6 +26,5 @@ __all__ = [
     "aggregate_tensor",
     "epiestim_R",
     "epiestim_discretise_serial_interval",
-    "IndependentMultiLineage",
     "MultiLineage",
 ]
