@@ -1,18 +1,22 @@
 import pickle
 from functools import lru_cache
-from typing import IO
 
 import jax.numpy as jnp
 import numpy as np
 from jax import lax, random
 from jax.experimental import host_callback
-from jax.experimental.optimizers import OptimizerState
 from numpyro import optim
 from numpyro.diagnostics import hpdi
-from numpyro.infer import SVI, Predictive, Trace_ELBO
-from numpyro.infer.svi import SVIState
+from numpyro.infer import MCMC, NUTS, SVI, Predictive, Trace_ELBO
 
 from genomicsurveillance.types import Guide, Model
+
+
+def _print_consumer(arg, transform):
+    iter_num, num_samples = arg
+    print(
+        f"SVI step {iter_num:,} / {num_samples:,} | {iter_num/num_samples * 100:.0f} %"
+    )
 
 
 class Posterior(object):
@@ -30,6 +34,12 @@ class Posterior(object):
 
     def _to_numpy(self, posterior):
         return {k: np.asarray(v) for k, v in posterior.items()}
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
 
     @lru_cache(maxsize=128)
     def median(self, param, *args, **kwargs):
@@ -77,6 +87,24 @@ class Posterior(object):
         )
 
 
+class Handler(object):
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def fit(self):
+        raise NotImplementedError
+
+    def predict(self):
+        raise NotImplementedError
+
+    def dump_posterior(self, file_name: str):
+        assert self.params is not None, "'init_svi' needs to be called first"
+        pickle.dump(self.params, open(file_name, "wb"))
+
+    def load_posterior(self, file_name):
+        self.params = pickle.load(open(file_name, "rb"))
+
+
 class SVIHandler(object):
     """
     Helper object that abstracts some of numpyros complexities. Inspired
@@ -105,7 +133,7 @@ class SVIHandler(object):
         rng_key: int = 254,
         num_epochs: int = 5000,
         num_samples: int = 1000,
-        log_func=print,
+        log_func=_print_consumer,
         log_freq=1000,
         to_numpy: bool = True,
     ):
@@ -135,7 +163,7 @@ class SVIHandler(object):
             state = lax.cond(
                 i % self.log_freq == 0,
                 lambda _: host_callback.id_tap(
-                    _print_consumer, (i, self.num_epochs), result=state
+                    self.log_func, (i, self.num_epochs), result=state
                 ),
                 lambda _: state,
                 operand=None,
@@ -153,7 +181,7 @@ class SVIHandler(object):
         self.init_state = state
         self.loss = loss if self.loss is None else jnp.concatenate([self.loss, loss])
 
-    def fit(self, *args, **kwargs):
+    def fit(self, predictive_kwargs: dict = {}, *args, **kwargs):
         self.num_epochs = kwargs.get("num_epochs", self.num_epochs)
 
         if self.init_state is None:
@@ -168,6 +196,7 @@ class SVIHandler(object):
             guide=self.guide,
             params=self.params,
             num_samples=self.num_samples,
+            **predictive_kwargs,
         )
 
         self.posterior = Posterior(predictive(self.rng_key, *args), self.to_numpy)
@@ -187,28 +216,47 @@ class SVIHandler(object):
 
         self.predictive = Posterior(predictive(rng_key, *args), self.to_numpy)
 
-    @property
-    def optim_state(self) -> OptimizerState:
-        """Current optimizer state"""
-        assert self.state is not None, "'init_svi' needs to be called first"
-        return self.state.optim_state
-
-    @optim_state.setter
-    def optim_state(self, state: OptimizerState):
-        """Set current optimizer state"""
-        self.state = SVIState(state, self.rng_key)
-
-    def dump_optim_state(self, fh: IO):
-        """Pickle and dump optimizer state to file handle"""
-        pickle.dump(optim.optimizers.unpack_optimizer_state(self.optim_state[1]), fh)
-        return self
-
     def dump_params(self, file_name: str):
         assert self.params is not None, "'init_svi' needs to be called first"
         pickle.dump(self.params, open(file_name, "wb"))
 
     def load_params(self, file_name):
         self.params = pickle.load(open(file_name, "rb"))
+
+
+class NutsHandler(object):
+    def __init__(
+        self,
+        model,
+        num_warmup=2000,
+        num_samples=10000,
+        num_chains=1,
+        rng_key=0,
+        to_numpy: bool = True,
+        *args,
+        **kwargs,
+    ):
+        self.model = model
+        self.num_warmup = num_warmup
+        self.num_samples = num_samples
+        self.num_chains = num_chains
+        self.rng_key, self.rng_key_ = random.split(random.PRNGKey(rng_key))
+        self.to_numpy = to_numpy
+        self.kernel = NUTS(model, **kwargs)
+        self.mcmc = MCMC(self.kernel, num_warmup, num_samples, num_chains=num_chains)
+
+    def predict(self, *args, **kwargs):
+        predictive = Predictive(self.model, self.posterior, **kwargs)
+        self.predictive = predictive(self.rng_key_, *args)
+
+    def fit(self, *args, **kwargs):
+        self.num_samples = kwargs.get("num_samples", self.num_samples)
+
+        self.mcmc.run(self.rng_key_, *args, **kwargs)
+        self.posterior = Posterior(self.mcmc.get_samples(), self.to_numpy)
+
+    def summary(self, *args, **kwargs):
+        self.mcmc.print_summary(*args, **kwargs)
 
 
 class SVIModel(SVIHandler):
@@ -227,8 +275,30 @@ class SVIModel(SVIHandler):
         raise NotImplementedError()
 
 
-def _print_consumer(arg, transform):
-    iter_num, num_samples = arg
-    print(
-        f"SVI step {iter_num:,} / {num_samples:,} | {iter_num/num_samples * 100:.0f} %"
-    )
+class Model(SVIHandler, NutsHandler):
+    _latent_variables = []
+
+    def __init__(self, handler, *args, **kwargs):
+        self.handler = handler
+        if handler == "SVI":
+            SVIHandler.__init__(self, self.model, self.guide, *args, **kwargs)
+        elif handler == "NUTS":
+            NutsHandler.__init__(self, self.model, *args, **kwargs)
+
+    def model(self):
+        raise NotImplementedError()
+
+    def guide(self):
+        raise NotImplementedError()
+
+    def fit(self, predictive_kwargs: dict = {}, *args, **kwargs):
+        if self.handler == "SVI":
+            if len(predictive_kwargs) == 0:
+                predictive_kwargs["return_sites"] = tuple(self._latent_variables)
+            SVIHandler.fit(self, predictive_kwargs=predictive_kwargs, *args, **kwargs)
+        elif self.handler == "NUTS":
+            NutsHandler.fit(self, *args, **kwargs)
+        self.post_process()
+
+    def post_process(self):
+        raise NotImplementedError
