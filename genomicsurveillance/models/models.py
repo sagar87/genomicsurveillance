@@ -35,6 +35,16 @@ def pad(array: jnp.ndarray, func=jnp.zeros):
     )
 
 
+def rescale_b(b, scale):
+    return b / scale
+
+
+def expand_posterior(array: np.ndarray, index: np.ndarray, shape: tuple) -> np.ndarray:
+    expanded_array = np.zeros((array.shape[0], *shape))
+    expanded_array[:, index] = array
+    return expanded_array
+
+
 class MultiLineage(Model):
     """
     WARNING: EXPERIMENTAL - The interface may change in future
@@ -127,8 +137,8 @@ class MultiLineage(Model):
         self.multinomial_scale = multinomial_scale
         self.time_scale = time_scale
 
-        self._nan_idx = nan_idx(cases, lineages)
-        self._missing_lineages = missing_lineages(lineages)[self._nan_idx].astype(int)
+        self.nan_idx = nan_idx(cases, lineages)
+        self.missing_lineages = missing_lineages(lineages)[self.nan_idx].astype(int)
 
         if basis is None:
             _, self.B = create_spline_basis(
@@ -144,7 +154,7 @@ class MultiLineage(Model):
         self.num_time = self.cases.shape[1]
         self.num_lin = self.lineages.shape[-1] - 1
         self.num_basis = self.B.shape[-1]
-        self.num_ltla_lin = self._nan_idx.shape[0]
+        self.num_ltla_lin = self.nan_idx.shape[0]
 
     def model(self):
         """The model."""
@@ -168,7 +178,7 @@ class MultiLineage(Model):
             ),
         )
 
-        beta = expand(beta, index[self._nan_idx, :], (self.num_ltla, self.num_basis))
+        beta = expand(beta, index[self.nan_idx, :], (self.num_ltla, self.num_basis))
 
         # MVN prior for b and c parameter
         bc0_loc = jnp.concatenate(
@@ -204,15 +214,15 @@ class MultiLineage(Model):
 
         b1 = pad(
             expand(
-                (self._missing_lineages * b).reshape(self.num_ltla_lin, 1, -1),
-                index[self._nan_idx, :, :],
+                (self.missing_lineages * b).reshape(self.num_ltla_lin, 1, -1),
+                index[self.nan_idx, :, :],
                 (self.num_ltla, 1, self.num_lin),
             )
         )
         c1 = pad(
             expand(
-                (self._missing_lineages * c).reshape(self.num_ltla_lin, 1, -1),
-                index[self._nan_idx, :, :],
+                (self.missing_lineages * c).reshape(self.num_ltla_lin, 1, -1),
+                index[self.nan_idx, :, :],
                 (self.num_ltla, 1, self.num_lin),
             )
         )
@@ -226,19 +236,19 @@ class MultiLineage(Model):
 
         npy.sample(
             Sites.CASES,
-            NegativeBinomial(lamb[self._nan_idx], jnp.exp(rho)),
-            obs=self.cases[self._nan_idx],
+            NegativeBinomial(lamb[self.nan_idx], jnp.exp(rho)),
+            obs=self.cases[self.nan_idx],
         )
 
         # with lineage_context:
         npy.sample(
             Sites.LINEAGE,
             MultinomialProbs(
-                p[self._nan_idx][:, self.lineage_dates],
-                total_count=self.lineages[self._nan_idx].sum(-1),
+                p[self.nan_idx][:, self.lineage_dates],
+                total_count=self.lineages[self.nan_idx].sum(-1),
                 scale=self.multinomial_scale,
             ),
-            obs=self.lineages[self._nan_idx],
+            obs=self.lineages[self.nan_idx],
         )
 
     def guide(self):
@@ -398,8 +408,8 @@ class SimpleMultiLineage(Model):
         self.multinomial_scale = multinomial_scale
         self.time_scale = time_scale
 
-        self._nan_idx = nan_idx(cases, lineages)
-        self._missing_lineages = missing_lineages(lineages)[self._nan_idx].astype(int)
+        self.nan_idx = nan_idx(cases, lineages)
+        self.missing_lineages = missing_lineages(lineages)[self.nan_idx].astype(int)
 
         if basis is None:
             _, self.B = create_spline_basis(
@@ -415,7 +425,7 @@ class SimpleMultiLineage(Model):
         self.num_time = self.cases.shape[1]
         self.num_lin = self.lineages.shape[-1] - 1
         self.num_basis = self.B.shape[-1]
-        self.num_ltla_lin = self._nan_idx.shape[0]
+        self.num_ltla_lin = self.nan_idx.shape[0]
 
     def model(self):
         """The model."""
@@ -438,7 +448,7 @@ class SimpleMultiLineage(Model):
             ),
         )
 
-        beta = expand(beta, index[self._nan_idx, :], (self.num_ltla, self.num_basis))
+        beta = expand(beta, index[self.nan_idx, :], (self.num_ltla, self.num_basis))
 
         # MVN prior for b and c parameter
         b0_loc = jnp.concatenate(
@@ -467,15 +477,15 @@ class SimpleMultiLineage(Model):
 
         b1 = pad(
             expand(
-                (self._missing_lineages * b).reshape(self.num_ltla_lin, 1, -1),
-                index[self._nan_idx, :, :],
+                (self.missing_lineages * b).reshape(self.num_ltla_lin, 1, -1),
+                index[self.nan_idx, :, :],
                 (self.num_ltla, 1, self.num_lin),
             )
         )
         c1 = pad(
             expand(
-                (self._missing_lineages * c).reshape(self.num_ltla_lin, 1, -1),
-                index[self._nan_idx, :, :],
+                (self.missing_lineages * c).reshape(self.num_ltla_lin, 1, -1),
+                index[self.nan_idx, :, :],
                 (self.num_ltla, 1, self.num_lin),
             )
         )
@@ -489,19 +499,19 @@ class SimpleMultiLineage(Model):
 
         npy.sample(
             Sites.CASES,
-            NegativeBinomial(lamb[self._nan_idx], jnp.exp(rho)),
-            obs=self.cases[self._nan_idx],
+            NegativeBinomial(lamb[self.nan_idx], jnp.exp(rho)),
+            obs=self.cases[self.nan_idx],
         )
 
         # with lineage_context:
         npy.sample(
             Sites.LINEAGE,
             MultinomialProbs(
-                p[self._nan_idx][:, self.lineage_dates],
-                total_count=self.lineages[self._nan_idx].sum(-1),
+                p[self.nan_idx][:, self.lineage_dates],
+                total_count=self.lineages[self.nan_idx].sum(-1),
                 scale=self.multinomial_scale,
             ),
-            obs=self.lineages[self._nan_idx],
+            obs=self.lineages[self.nan_idx],
         )
 
     def guide(self):
@@ -566,20 +576,22 @@ class SimpleMultiLineage(Model):
         )
         npy.sample(Sites.C, dist.Normal(c_loc, c_scale))
 
-    def post_process(self):
-        self.posterior[Sites.TRANSMISSIBILITY] = np.exp(
-            self.posterior[Sites.B0] / self.time_scale * self.tau
+    def deterministic(self):
+        b = rescale_b(self.posterior[Sites.B0], self.time_scale)
+
+        c = expand_posterior(
+            self.posterior[Sites.C],
+            self.nan_idx,
+            (self.num_ltla, self.num_lin),
         )
 
-        logits = self.posterior[Sites.B0].reshape(
-            -1, 1, 1, self.num_lin
-        ) / self.time_scale * np.arange(self.cases.shape[1]).reshape(
-            1, 1, -1, 1
-        ) + self.posterior[
-            Sites.C
-        ].reshape(
-            -1, self.num_ltla, 1, self.num_lin
+        beta = expand_posterior(
+            self.posterior[Sites.BETA], self.nan_idx, (self.num_ltla, self.num_basis)
         )
+
+        logits = b.reshape(-1, 1, 1, self.num_lin) * np.arange(self.num_time).reshape(
+            1, 1, -1, 1
+        ) + c.reshape(-1, self.num_ltla, 1, self.num_lin)
 
         logits = np.concatenate(
             [
@@ -591,24 +603,16 @@ class SimpleMultiLineage(Model):
             -1,
         )
 
-        self.posterior[Sites.P] = jnp.exp(logits) / jnp.exp(
-            logsumexp(logits, -1, keepdims=True)
-        )
+        p = jnp.exp(logits) / jnp.exp(logsumexp(logits, -1, keepdims=True))
 
-        self.posterior[Sites.MU] = self.posterior[Sites.BETA] @ self.B[0].T
-        self.posterior[Sites.LAMBDA] = self.population.reshape(1, -1, 1) * jnp.exp(
-            self.posterior[Sites.MU]
-        )
-        self.posterior[Sites.LAMBDA_LINEAGE] = (
-            self.posterior[Sites.LAMBDA].reshape(-1, self.num_ltla, self.num_time, 1)
-            * self.posterior[Sites.P]
-        )
+        mu = beta @ self.B[0].T
+        lamb = self.population.reshape(1, -1, 1) * jnp.exp(mu)
+        lamb_lin = lamb.reshape(-1, self.num_ltla, self.num_time, 1) * p
 
-        self.posterior[Sites.GROWTH_RATE] = self.posterior[Sites.BETA] @ self.B[1].T
-        self.posterior[Sites.R] = np.exp(
+        R = np.exp(
             (
-                (self.posterior[Sites.BETA] @ self.B[1].T)[..., np.newaxis]
-                + pad(self.posterior[Sites.B0]).reshape(-1, 1, 1, self.num_lin + 1)
+                (beta @ self.B[1].T)[..., np.newaxis]
+                + pad(b).reshape(-1, 1, 1, self.num_lin + 1)
             )
             * self.tau
         )
@@ -616,13 +620,13 @@ class SimpleMultiLineage(Model):
         if self.regions is not None:
             for i, region in enumerate(self.regions):
                 reg = np.array(
-                    [region[self._nan_idx] == i for i in np.unique(region)]
+                    [region[self.nan_idx] == i for i in np.unique(region)]
                 ).astype("float")
 
                 self.posterior[Sites.LAMBDA_LINEAGE + f"_{i}"] = jnp.einsum(
                     "ij,mjkl->mikl",
                     reg,
-                    self.posterior[Sites.LAMBDA_LINEAGE][:, self._nan_idx],
+                    lamb_lin[:, self.nan_idx],
                 )
 
                 self.posterior[Sites.LAMBDA + f"_{i}"] = self.posterior[
@@ -634,3 +638,15 @@ class SimpleMultiLineage(Model):
                 ] / self.posterior[Sites.LAMBDA_LINEAGE + f"_{i}"].sum(
                     -1, keepdims=True
                 )
+
+        # set posterior variables
+        self.posterior[Sites.BETA] = beta
+        self.posterior[Sites.B0] = b
+        self.posterior[Sites.C] = c
+        self.posterior[Sites.P] = p
+        self.posterior[Sites.MU] = mu
+        self.posterior[Sites.LAMBDA] = lamb
+        self.posterior[Sites.LAMBDA_LINEAGE] = lamb_lin
+        self.posterior[Sites.R] = R
+        self.posterior[Sites.TRANSMISSIBILITY] = np.exp(b * self.tau)
+        self.posterior[Sites.GROWTH_RATE] = beta @ self.B[1].T

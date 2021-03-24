@@ -298,7 +298,7 @@ class Model(SVIHandler, NutsHandler):
             SVIHandler.fit(self, predictive_kwargs=predictive_kwargs, *args, **kwargs)
         elif self.handler == "NUTS":
             NutsHandler.fit(self, *args, **kwargs)
-        self.post_process()
+        self.deterministic()
 
-    def post_process(self):
+    def deterministic(self):
         raise NotImplementedError
