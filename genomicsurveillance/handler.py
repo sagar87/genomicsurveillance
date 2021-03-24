@@ -98,14 +98,14 @@ class Handler(object):
         raise NotImplementedError
 
     def dump_posterior(self, file_name: str):
-        assert self.params is not None, "'init_svi' needs to be called first"
-        pickle.dump(self.params, open(file_name, "wb"))
+        assert self.posterior is not None, "'init_svi' needs to be called first"
+        pickle.dump(self.posterior.data, open(file_name, "wb"))
 
     def load_posterior(self, file_name):
-        self.params = pickle.load(open(file_name, "rb"))
+        self.posterior = Posterior(pickle.load(open(file_name, "rb")))
 
 
-class SVIHandler(object):
+class SVIHandler(Handler):
     """
     Helper object that abstracts some of numpyros complexities. Inspired
     by an implementation of Florian Wilhelm.
@@ -224,7 +224,7 @@ class SVIHandler(object):
         self.params = pickle.load(open(file_name, "rb"))
 
 
-class NutsHandler(object):
+class NutsHandler(Handler):
     def __init__(
         self,
         model,
@@ -291,14 +291,18 @@ class Model(SVIHandler, NutsHandler):
     def guide(self):
         raise NotImplementedError()
 
-    def fit(self, predictive_kwargs: dict = {}, *args, **kwargs):
+    def fit(
+        self, predictive_kwargs: dict = {}, deterministic: bool = False, *args, **kwargs
+    ):
         if self.handler == "SVI":
             if len(predictive_kwargs) == 0:
                 predictive_kwargs["return_sites"] = tuple(self._latent_variables)
             SVIHandler.fit(self, predictive_kwargs=predictive_kwargs, *args, **kwargs)
         elif self.handler == "NUTS":
             NutsHandler.fit(self, *args, **kwargs)
-        self.deterministic()
+
+        if deterministic:
+            self.deterministic()
 
     def deterministic(self):
-        raise NotImplementedError
+        pass
