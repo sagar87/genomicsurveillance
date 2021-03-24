@@ -28,6 +28,12 @@ def expand(array: jnp.ndarray, index, shape: tuple) -> jnp.ndarray:
     return expanded_array
 
 
+def pad_array(array, func=np.zeros):
+    pad = np.zeros(tuple([i for i in array.shape[:-1]]))
+    pad = pad.reshape(*pad.shape, 1)
+    return np.concatenate([array, pad], -1)
+
+
 def pad(array: jnp.ndarray, func=jnp.zeros):
     """Adds an additional column to an three dimensional array."""
     return jnp.concatenate(
@@ -577,76 +583,20 @@ class SimpleMultiLineage(Model):
         npy.sample(Sites.C, dist.Normal(c_loc, c_scale))
 
     def deterministic(self):
-        b = rescale_b(self.posterior[Sites.B0], self.time_scale)
+        b = pad_array(rescale_b(self.posterior[Sites.B0], self.time_scale))
 
-        c = expand_posterior(
-            self.posterior[Sites.C],
-            self.nan_idx,
-            (self.num_ltla, self.num_lin),
+        c = pad_array(
+            expand_posterior(
+                self.posterior[Sites.C],
+                self.nan_idx,
+                (self.num_ltla, self.num_lin),
+            )
         )
 
         beta = expand_posterior(
             self.posterior[Sites.BETA], self.nan_idx, (self.num_ltla, self.num_basis)
         )
 
-        logits = b.reshape(-1, 1, 1, self.num_lin) * np.arange(self.num_time).reshape(
-            1, 1, -1, 1
-        ) + c.reshape(-1, self.num_ltla, 1, self.num_lin)
-
-        logits = np.concatenate(
-            [
-                logits,
-                np.zeros(logits.shape[:-1]).reshape(
-                    -1, self.num_ltla, self.num_time, 1
-                ),
-            ],
-            -1,
-        )
-
-        p = jnp.exp(logits) / jnp.exp(logsumexp(logits, -1, keepdims=True))
-
-        mu = beta @ self.B[0].T
-        lamb = self.population.reshape(1, -1, 1) * jnp.exp(mu)
-        lamb_lin = lamb.reshape(-1, self.num_ltla, self.num_time, 1) * p
-
-        R = np.exp(
-            (
-                (beta @ self.B[1].T)[..., np.newaxis]
-                + pad(b).reshape(-1, 1, 1, self.num_lin + 1)
-            )
-            * self.tau
-        )
-
-        if self.regions is not None:
-            for i, region in enumerate(self.regions):
-                reg = np.array(
-                    [region[self.nan_idx] == i for i in np.unique(region)]
-                ).astype("float")
-
-                self.posterior[Sites.LAMBDA_LINEAGE + f"_{i}"] = jnp.einsum(
-                    "ij,mjkl->mikl",
-                    reg,
-                    lamb_lin[:, self.nan_idx],
-                )
-
-                self.posterior[Sites.LAMBDA + f"_{i}"] = self.posterior[
-                    Sites.LAMBDA_LINEAGE + f"_{i}"
-                ].sum(-1)
-
-                self.posterior[Sites.P + f"_{i}"] = self.posterior[
-                    Sites.LAMBDA_LINEAGE + f"_{i}"
-                ] / self.posterior[Sites.LAMBDA_LINEAGE + f"_{i}"].sum(
-                    -1, keepdims=True
-                )
-
-        # set posterior variables
         self.posterior[Sites.BETA] = beta
         self.posterior[Sites.B0] = b
         self.posterior[Sites.C] = c
-        self.posterior[Sites.P] = p
-        self.posterior[Sites.MU] = mu
-        self.posterior[Sites.LAMBDA] = lamb
-        self.posterior[Sites.LAMBDA_LINEAGE] = lamb_lin
-        self.posterior[Sites.R] = R
-        self.posterior[Sites.TRANSMISSIBILITY] = np.exp(b * self.tau)
-        self.posterior[Sites.GROWTH_RATE] = beta @ self.B[1].T

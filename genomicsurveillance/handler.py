@@ -86,6 +86,9 @@ class Posterior(object):
             self.mean(param, *args, **kwargs) - self.hpdi(param, *args, **kwargs)
         )
 
+    def distribution(self, param, *args, **kwargs):
+        return self[param][tuple([slice(None), *args])]
+
 
 class Handler(object):
     def __init__(self, *args, **kwargs):
@@ -292,7 +295,7 @@ class Model(SVIHandler, NutsHandler):
         raise NotImplementedError()
 
     def fit(
-        self, predictive_kwargs: dict = {}, deterministic: bool = False, *args, **kwargs
+        self, predictive_kwargs: dict = {}, deterministic: bool = True, *args, **kwargs
     ):
         if self.handler == "SVI":
             if len(predictive_kwargs) == 0:
