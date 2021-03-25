@@ -553,7 +553,10 @@ class SimpleMultiLineage(Model):
                 Sites.LAMBDA_LINEAGE,
                 self.population.reshape(-1, 1, 1) * mu[..., jnp.newaxis] * p,
             )
-            npy.deterministic(Sites.R, (beta @ self.B[1].T)[..., np.newaxis] + b1)
+            npy.deterministic(
+                Sites.R,
+                jnp.exp(((beta @ self.B[1].T)[..., np.newaxis] + b1) + self.tau),
+            )
 
     def guide(self):
         if self.fit_rho:
