@@ -3,7 +3,7 @@ name = "genomicsurveillance"
 packages = [
     { include = "genomicsurveillance" },
 ]
-version = "0.2.4"
+version = "0.2.5"
 description = ""
 authors = ["Harald Vohringer <harald.voeh@gmail.com>"]
 
