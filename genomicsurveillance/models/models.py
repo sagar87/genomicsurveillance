@@ -341,7 +341,7 @@ class MultiLineage(Model):
         """
         if Sites.BC0 in self.posterior.keys():
             self.posterior[Sites.B0] = (
-                self.posterior[Sites.BC0][: self.num_lin] / self.time_scale
+                self.posterior[Sites.BC0][:, : self.num_lin] / self.time_scale
             )
 
 
