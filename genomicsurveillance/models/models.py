@@ -265,7 +265,7 @@ class MultiLineage(Model):
             )
             npy.deterministic(
                 Sites.R,
-                jnp.exp(((beta @ self.B[1].T)[..., np.newaxis] + b1) + self.tau),
+                jnp.exp(((beta @ self.B[1].T)[..., np.newaxis] + b1) * self.tau),
             )
 
     def guide(self):
@@ -555,7 +555,7 @@ class SimpleMultiLineage(Model):
             )
             npy.deterministic(
                 Sites.R,
-                jnp.exp(((beta @ self.B[1].T)[..., np.newaxis] + b1) + self.tau),
+                jnp.exp(((beta @ self.B[1].T)[..., np.newaxis] + b1) * self.tau),
             )
 
     def guide(self):
