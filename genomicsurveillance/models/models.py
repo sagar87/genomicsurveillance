@@ -78,7 +78,7 @@ class MultiLineage(Model):
     :kwargs: SVI Handler arguments.
     """
 
-    _latent_variables = [Sites.BETA1, Sites.B0, Sites.B1, Sites.C1]
+    _latent_variables = [Sites.BETA1, Sites.BC0, Sites.B1, Sites.C1]
 
     def __init__(
         self,
@@ -341,7 +341,7 @@ class MultiLineage(Model):
         """
         if Sites.B0 in self.posterior.keys():
             self.posterior[Sites.B0] = (
-                self.posterior[Sites.B0][: self.num_lin] / self.time_scale
+                self.posterior[Sites.BC0][: self.num_lin] / self.time_scale
             )
 
 
