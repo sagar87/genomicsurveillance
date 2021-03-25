@@ -41,6 +41,12 @@ class Posterior(object):
     def __setitem__(self, key, value):
         self.data[key] = value
 
+    def keys(self):
+        return self.data.keys()
+
+    def items(self):
+        return self.data.items()
+
     @lru_cache(maxsize=128)
     def median(self, param, *args, **kwargs):
         """Returns the median of param."""
