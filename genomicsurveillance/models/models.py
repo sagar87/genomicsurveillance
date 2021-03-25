@@ -528,10 +528,9 @@ class SimpleMultiLineage(Model):
         # with lineage_context:
         npy.sample(
             Sites.LINEAGE,
-            MultinomialProbs(
+            dist.MultinomialProbs(
                 p[self.nan_idx][:, self.lineage_dates],
                 total_count=self.lineages[self.nan_idx].sum(-1),
-                scale=self.multinomial_scale,
             ),
             obs=self.lineages[self.nan_idx],
         )
