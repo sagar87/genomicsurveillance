@@ -1,0 +1,74 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+def dot_plot(
+    dist,
+    variable="sa",
+    baseline="B.1",
+    title=None,
+    ylabel="Transmissibility",
+    xlabel="Lineage",
+    xticklabels=None,
+    ax=None,
+):
+    y = np.median(dist, 0)
+    x = np.arange(y.shape[0])
+    ci = np.abs((np.quantile(dist, [0.025, 0.975], 0) - y))
+
+    if ax is None:
+        ax = plt.gca()
+
+    ax.errorbar(x, y, yerr=ci, ls="", marker=".")
+    ax.axhline(1, color="k", linestyle=":", linewidth=0.5, label=baseline, alpha=0.8)
+    ax.grid()
+
+    ax.set_xticks(x)
+    ax.margins(x=0.01)
+
+    if xticklabels:
+        _ = ax.set_xticklabels([m for m in xticklabels if m != baseline], rotation=90)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    if title:
+        ax.set_title(title)
+    ax.legend()
+
+
+def plot_probability(dist, lineages=None, colors=None, ax=None):
+    if ax is None:
+        ax = plt.gca()
+
+    if lineages is None:
+        lineages = np.arange(dist.shape[-1])
+
+    for lin in lineages:
+        y = np.median(dist, 0)
+        x = np.arange(y.shape[0])
+        ci = np.quantile(dist, [0.025, 0.975], 0)
+
+        ax.plot(x, y[:, lin], c=f"C{lin%10}")
+        ax.fill_between(
+            x,
+            ci[0, ..., lin],
+            ci[1, ..., lin],
+            color=f"C{lin%10}" if colors is None else colors[lin],
+            alpha=0.2,
+        )
+
+    return ax
+
+
+def plot_genome_proportion(
+    lineage_dates, lineage_tensor, idx, lineages=None, colors=None, ax=None
+):
+    if ax is None:
+        ax = plt.gca()
+    for lin in lineages:
+        ax.scatter(
+            lineage_dates,
+            lineage_tensor[idx, :, lin] / (lineage_tensor[idx] + 1e-16).sum(1),
+            c=f"C{lin%10}" if colors is None else colors[lin],
+        )
+
+    return ax

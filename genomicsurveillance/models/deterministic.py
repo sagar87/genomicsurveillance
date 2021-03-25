@@ -12,7 +12,10 @@ def compute_logits(model, idx):
 
 def compute_probabilities(model, idx):
     logits = compute_logits(model, idx)
-    return np.exp(logits) / np.exp(logsumexp(logits, -1, keepdims=True))
+    p = np.exp(logits) / np.exp(logsumexp(logits, -1, keepdims=True))
+    if p.ndim <= 3:
+        p = np.expand_dims(p, 1)
+    return p
 
 
 def compute_lambda(model, idx):
@@ -45,6 +48,5 @@ def compute_transmissibility(model):
     return np.exp(model.posterior.dist(Sites.B1) * model.tau)
 
 
-def compute_growth_rate(model, func="mean", BETA=Sites.BETA):
-    beta = model.posterior.__getattribute__(func)(BETA)
-    return beta @ model.B[1].T
+def compute_growth_rate(model, idx):
+    return model.posterior.dist(Sites.BETA1, idx) @ model.B[1].T
