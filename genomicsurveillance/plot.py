@@ -35,24 +35,34 @@ def dot_plot(
     ax.legend()
 
 
-def plot_probability(dist, lineages=None, colors=None, ax=None):
+def plot_median_and_ci(dist, lineages=None, colors=None, ax=None):
     if ax is None:
         ax = plt.gca()
 
     if lineages is None:
         lineages = np.arange(dist.shape[-1])
 
-    for lin in lineages:
-        y = np.median(dist, 0)
-        x = np.arange(y.shape[0])
-        ci = np.quantile(dist, [0.025, 0.975], 0)
+    y = np.median(dist.squeeze(), 0)
+    x = np.arange(y.shape[0])
+    ci = np.quantile(dist.squeeze(), [0.025, 0.975], 0)
+    if dist.squeeze().ndim >= 3:
+        for lin in lineages:
 
-        ax.plot(x, y[:, lin], c=f"C{lin%10}")
+            ax.plot(x, y[:, lin], c=f"C{lin%10}")
+            ax.fill_between(
+                x,
+                ci[0, ..., lin],
+                ci[1, ..., lin],
+                color=f"C{lin%10}" if colors is None else colors[lin],
+                alpha=0.2,
+            )
+    else:
+        ax.plot(x, y, c="C0" if colors is None else colors)
         ax.fill_between(
             x,
-            ci[0, ..., lin],
-            ci[1, ..., lin],
-            color=f"C{lin%10}" if colors is None else colors[lin],
+            ci[0],
+            ci[1],
+            color="C0" if colors is None else colors,
             alpha=0.2,
         )
 
