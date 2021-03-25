@@ -5,7 +5,7 @@ import numpyro.distributions as dist
 from jax.ops import index, index_update
 from jax.scipy.special import logsumexp
 
-from genomicsurveillance.distributions import MultinomialProbs, NegativeBinomial
+from genomicsurveillance.distributions import NegativeBinomial
 from genomicsurveillance.handler import Model
 from genomicsurveillance.utils import create_spline_basis, is_nan_row
 
@@ -78,7 +78,7 @@ class MultiLineage(Model):
     :kwargs: SVI Handler arguments.
     """
 
-    _latent_variables = [Sites.BETA1, Sites.B1, Sites.C1]
+    _latent_variables = [Sites.BETA1, Sites.B0, Sites.B1, Sites.C1]
 
     def __init__(
         self,
@@ -335,6 +335,15 @@ class MultiLineage(Model):
         )
         npy.sample(Sites.C, dist.Normal(c_loc, c_scale))
 
+    def deterministic(self):
+        """
+        Performs post processing steps
+        """
+        if Sites.B0 in self.posterior.keys():
+            self.posterior[Sites.B0] = (
+                self.posterior[Sites.B0][: self.num_lin] / self.time_scale
+            )
+
 
 class SimpleMultiLineage(Model):
     """
@@ -400,7 +409,6 @@ class SimpleMultiLineage(Model):
         self.lineages = lineages
         self.lineage_dates = lineage_dates
         self.population = population
-
 
         self.tau = tau
         self.init_scale = init_scale
