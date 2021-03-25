@@ -238,14 +238,8 @@ class MultiLineage(Model):
         logits = b1 * jnp.arange(self.num_time).reshape(1, -1, 1) + c1
         p = jnp.exp(logits) / jnp.exp(logsumexp(logits, -1, keepdims=True))
 
-        if self.sample_deterministic:
-            npy.deterministic(Sites.P, p)
-
         mu = jnp.exp(beta @ self.B[0].T)
         lamb = self.population.reshape(-1, 1) * mu
-
-        if self.sample_deterministic:
-            npy.deterministic(Sites.LAMBDA, lamb)
 
         npy.sample(
             Sites.CASES,
@@ -263,10 +257,13 @@ class MultiLineage(Model):
             obs=self.lineages[self.nan_idx],
         )
         if self.sample_deterministic:
+            npy.deterministic(Sites.LAMBDA, lamb)
+            npy.deterministic(Sites.P, p)
             npy.deterministic(
                 Sites.LAMBDA_LINEAGE,
                 self.population.reshape(-1, 1, 1) * mu[..., jnp.newaxis] * p,
             )
+            npy.deterministic(Sites.R, (beta @ self.B[1].T)[..., np.newaxis] + b1)
 
     def guide(self):
         if self.fit_rho:
@@ -366,7 +363,7 @@ class SimpleMultiLineage(Model):
     :kwargs: SVI Handler arguments.
     """
 
-    _latent_variables = [Sites.B0, Sites.C, Sites.BETA]
+    _latent_variables = [Sites.B1, Sites.C1, Sites.BETA1]
 
     def __init__(
         self,
@@ -388,9 +385,8 @@ class SimpleMultiLineage(Model):
         fit_rho: bool = False,
         rho_loc: float = np.log(10.0),
         rho_scale: float = 1.0,
-        multinomial_scale: float = 1.0,
         time_scale: float = 100.0,
-        exclude: bool = True,
+        sample_deterministic: bool = False,
         handler: str = "SVI",
         *args,
         **kwargs,
@@ -426,13 +422,12 @@ class SimpleMultiLineage(Model):
 
         self.rho_loc = rho_loc
         self.rho_scale = rho_scale
-        self.exclude = exclude
-
-        self.multinomial_scale = multinomial_scale
         self.time_scale = time_scale
 
         self.nan_idx = nan_idx(cases, lineages)
         self.missing_lineages = missing_lineages(lineages)[self.nan_idx].astype(int)
+
+        self.sample_deterministic = sample_deterministic
 
         if basis is None:
             _, self.B = create_spline_basis(
@@ -471,7 +466,10 @@ class SimpleMultiLineage(Model):
             ),
         )
 
-        beta = expand(beta, index[self.nan_idx, :], (self.num_ltla, self.num_basis))
+        beta = npy.deterministic(
+            Sites.BETA1,
+            expand(beta, index[self.nan_idx, :], (self.num_ltla, self.num_basis)),
+        )
 
         # MVN prior for b and c parameter
         b0_loc = jnp.concatenate(
@@ -498,19 +496,25 @@ class SimpleMultiLineage(Model):
             ),
         )
 
-        b1 = pad(
-            expand(
-                (self.missing_lineages * b).reshape(self.num_ltla_lin, 1, -1),
-                index[self.nan_idx, :, :],
-                (self.num_ltla, 1, self.num_lin),
-            )
+        b1 = npy.deterministic(
+            Sites.B1,
+            pad(
+                expand(
+                    (self.missing_lineages * b).reshape(self.num_ltla_lin, 1, -1),
+                    index[self.nan_idx, :, :],
+                    (self.num_ltla, 1, self.num_lin),
+                )
+            ),
         )
-        c1 = pad(
-            expand(
-                (self.missing_lineages * c).reshape(self.num_ltla_lin, 1, -1),
-                index[self.nan_idx, :, :],
-                (self.num_ltla, 1, self.num_lin),
-            )
+        c1 = npy.deterministic(
+            Sites.C1,
+            pad(
+                expand(
+                    (self.missing_lineages * c).reshape(self.num_ltla_lin, 1, -1),
+                    index[self.nan_idx, :, :],
+                    (self.num_ltla, 1, self.num_lin),
+                )
+            ),
         )
 
         # Lineage specific regression coefficients (self.num_ltla x self.num_basis x self.num_lin)
@@ -536,6 +540,15 @@ class SimpleMultiLineage(Model):
             ),
             obs=self.lineages[self.nan_idx],
         )
+
+        if self.sample_deterministic:
+            npy.deterministic(Sites.LAMBDA, lamb)
+            npy.deterministic(Sites.P, p)
+            npy.deterministic(
+                Sites.LAMBDA_LINEAGE,
+                self.population.reshape(-1, 1, 1) * mu[..., jnp.newaxis] * p,
+            )
+            npy.deterministic(Sites.R, (beta @ self.B[1].T)[..., np.newaxis] + b1)
 
     def guide(self):
         if self.fit_rho:

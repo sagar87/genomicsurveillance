@@ -86,7 +86,7 @@ class Posterior(object):
             self.mean(param, *args, **kwargs) - self.hpdi(param, *args, **kwargs)
         )
 
-    def distribution(self, param, *args, **kwargs):
+    def dist(self, param, *args, **kwargs):
         return self[param][tuple([slice(None), *args])]
 
 
