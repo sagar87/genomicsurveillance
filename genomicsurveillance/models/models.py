@@ -371,16 +371,13 @@ class SimpleMultiLineage(Model):
         lineages: np.ndarray,
         lineage_dates: np.ndarray,
         population: np.ndarray,
-        regions=None,
         basis=None,
         tau: float = 5.0,
         init_scale: float = 0.1,
         beta_loc: float = -10.0,
         beta_scale: float = 5.0,
         b0_scale: float = 0.2,
-        c0_loc: float = -10.0,
-        c0_scale: float = 5.0,
-        c_loc: float = 0.0,
+        c_loc: float = -15.0,
         c_scale: float = 10.0,
         fit_rho: bool = False,
         rho_loc: float = np.log(10.0),
@@ -403,7 +400,7 @@ class SimpleMultiLineage(Model):
         self.lineages = lineages
         self.lineage_dates = lineage_dates
         self.population = population
-        self.regions = regions
+
 
         self.tau = tau
         self.init_scale = init_scale
@@ -414,8 +411,6 @@ class SimpleMultiLineage(Model):
 
         self.b0_loc = 0.0
         self.b0_scale = b0_scale
-        self.c0_loc = c0_loc
-        self.c0_scale = c0_scale
 
         self.c_loc = c_loc
         self.c_scale = c_scale
