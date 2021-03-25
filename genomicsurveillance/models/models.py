@@ -339,7 +339,7 @@ class MultiLineage(Model):
         """
         Performs post processing steps
         """
-        if Sites.B0 in self.posterior.keys():
+        if Sites.BC0 in self.posterior.keys():
             self.posterior[Sites.B0] = (
                 self.posterior[Sites.BC0][: self.num_lin] / self.time_scale
             )
