@@ -153,7 +153,7 @@ class MultiLineage(Model):
         self.num_time = self.cases.shape[1]
         self.num_lin = self.lineages.shape[-1] - 1
         self.num_basis = self.B.shape[-1]
-        self.self.num_ltla_lin = self.nan_idx.shape[0]
+        self.num_ltla_lin = self.nan_idx.shape[0]
 
     def model(self):
         """The model."""
