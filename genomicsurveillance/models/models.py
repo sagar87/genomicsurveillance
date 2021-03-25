@@ -605,22 +605,3 @@ class SimpleMultiLineage(Model):
             jnp.tile(self.init_scale * self.c_scale, (self.num_ltla_lin, self.num_lin)),
         )
         npy.sample(Sites.C, dist.Normal(c_loc, c_scale))
-
-    def deterministic(self):
-        b = pad_array(rescale_b(self.posterior[Sites.B0], self.time_scale))
-
-        c = pad_array(
-            expand_posterior(
-                self.posterior[Sites.C],
-                self.nan_idx,
-                (self.num_ltla, self.num_lin),
-            )
-        )
-
-        beta = expand_posterior(
-            self.posterior[Sites.BETA], self.nan_idx, (self.num_ltla, self.num_basis)
-        )
-
-        self.posterior[Sites.BETA] = beta
-        self.posterior[Sites.B0] = b
-        self.posterior[Sites.C] = c
