@@ -101,7 +101,9 @@ class Lineage(object):
     def aggregate_lambda(self, region):
         agg = []
         for i in np.sort(np.unique(region)):
-            agg.append(self.get_lambda_lineage(np.where(region == i)[0]).sum(1))
+            region_idx = np.where(region == i)[0]
+            region_not_nan = np.isin(region_idx, self.nan_idx)
+            agg.append(self.get_lambda_lineage(region_idx[region_not_nan]).sum(1))
 
         return np.stack(agg, 1)
 
@@ -110,10 +112,12 @@ class Lineage(object):
 
         agg = []
         for i in np.sort(np.unique(region)):
+            region_idx = np.where(region == i)[0]
+            region_not_nan = np.isin(region_idx, self.nan_idx)
             agg.append(
                 (
-                    np.log(self.get_R(np.where(region == i)[0]))
-                    * self.get_lambda_lineage(np.where(region == i)[0])
+                    np.log(self.get_R(region_idx[region_not_nan]))
+                    * self.get_lambda_lineage(region_idx[region_not_nan])
                 ).sum(1)
             )
 
