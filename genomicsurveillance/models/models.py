@@ -61,9 +61,9 @@ class Lineage(object):
         return array
 
     def get_logits(self, idx, time=Ellipsis):
-        logits = self.posterior.dist(Sites.B1, idx) * np.arange(
-            0, self.num_time
-        )[time].reshape(1, -1, 1) + self.posterior.dist(Sites.C1, idx)
+        logits = self.posterior.dist(Sites.B1, idx) * np.arange(0, self.num_time)[
+            time
+        ].reshape(1, -1, 1) + self.posterior.dist(Sites.C1, idx)
         logits = self._expand_dims(logits)
         return logits
 
@@ -90,7 +90,9 @@ class Lineage(object):
         b1 = self._expand_dims(self.posterior.dist(Sites.B1, idx), dim=2)
         beta = self.posterior.dist(Sites.BETA1, idx)
         logR = self._expand_dims(
-            self._expand_dims(beta @ self.B[1][time].T, num_dim=3, dim=1), num_dim=4, dim=-1
+            self._expand_dims(beta @ self.B[1][time].T, num_dim=3, dim=1),
+            num_dim=4,
+            dim=-1,
         )
 
         return jnp.exp(((logR - (np.einsum("mijk,milk->mijl", p, b1))) + b1) * self.tau)
@@ -103,7 +105,9 @@ class Lineage(object):
         for i in np.sort(np.unique(region)):
             region_idx = np.where(region == i)[0]
             region_not_nan = np.isin(region_idx, self.nan_idx)
-            agg.append(self.get_lambda_lineage(region_idx[region_not_nan], time=time).sum(1))
+            agg.append(
+                self.get_lambda_lineage(region_idx[region_not_nan], time=time).sum(1)
+            )
 
         return np.stack(agg, 1)
 
@@ -256,11 +260,11 @@ class MultiLineageArma(Model, Lineage):
             self._arma = jnp.linalg.inv(Π0)
         return self._arma
 
-    def get_lambda(self, idx):
+    def get_lambda(self, idx, time=Ellipsis):
         beta = self._expand_dims(self.posterior.dist(Sites.BETA1, idx), 3)
 
         lamb = self.population[idx].reshape(1, -1, 1) * np.exp(
-            np.einsum("ijk,kl->ijl", beta, self.B[0].T) + self.beta_loc
+            np.einsum("ijk,kl->ijl", beta, self.B[0][time].T) + self.beta_loc
         )
         lamb = self._expand_dims(lamb, dim=-1)
         return lamb
