@@ -60,37 +60,37 @@ class Lineage(object):
             array = np.expand_dims(array, dim)
         return array
 
-    def get_logits(self, idx):
+    def get_logits(self, idx, time=Ellipsis):
         logits = self.posterior.dist(Sites.B1, idx) * np.arange(
             0, self.num_time
-        ).reshape(1, -1, 1) + self.posterior.dist(Sites.C1, idx)
+        )[time].reshape(1, -1, 1) + self.posterior.dist(Sites.C1, idx)
         logits = self._expand_dims(logits)
         return logits
 
-    def get_probabilities(self, idx):
-        logits = self.get_logits(idx)
+    def get_probabilities(self, idx, time=Ellipsis):
+        logits = self.get_logits(idx, time=time)
         p = np.exp(logits) / np.exp(logsumexp(logits, -1, keepdims=True))
         return p
 
-    def get_lambda(self, idx):
+    def get_lambda(self, idx, time=Ellipsis):
         beta = self.posterior.dist(Sites.BETA1, idx)
         beta = self._expand_dims(beta, 3)
 
         lamb = self.population[idx].reshape(1, -1, 1) * np.exp(
-            np.einsum("ijk,kl->ijl", beta, self.B[0].T)
+            np.einsum("ijk,kl->ijl", beta, self.B[0][time].T)
         )
         lamb = self._expand_dims(lamb, dim=-1)
         return lamb
 
-    def get_lambda_lineage(self, idx):
-        return self.get_lambda(idx) * self.get_probabilities(idx)
+    def get_lambda_lineage(self, idx, time=Ellipsis):
+        return self.get_lambda(idx, time=time) * self.get_probabilities(idx, time=time)
 
-    def get_R(self, idx):
-        p = self.get_probabilities(idx)
+    def get_R(self, idx, time=Ellipsis):
+        p = self.get_probabilities(idx, time=time)
         b1 = self._expand_dims(self.posterior.dist(Sites.B1, idx), dim=2)
         beta = self.posterior.dist(Sites.BETA1, idx)
         logR = self._expand_dims(
-            self._expand_dims(beta @ self.B[1].T, num_dim=3, dim=1), num_dim=4, dim=-1
+            self._expand_dims(beta @ self.B[1][time].T, num_dim=3, dim=1), num_dim=4, dim=-1
         )
 
         return jnp.exp(((logR - (np.einsum("mijk,milk->mijl", p, b1))) + b1) * self.tau)
@@ -98,17 +98,17 @@ class Lineage(object):
     def get_transmissibility(self, idx):
         return np.exp(self.posterior.dist(Sites.B1) * self.tau)
 
-    def aggregate_lambda(self, region):
+    def aggregate_lambda(self, region, time=Ellipsis):
         agg = []
         for i in np.sort(np.unique(region)):
             region_idx = np.where(region == i)[0]
             region_not_nan = np.isin(region_idx, self.nan_idx)
-            agg.append(self.get_lambda_lineage(region_idx[region_not_nan]).sum(1))
+            agg.append(self.get_lambda_lineage(region_idx[region_not_nan], time=time).sum(1))
 
         return np.stack(agg, 1)
 
-    def aggregate_R(self, region):
-        lambda_regions = self.aggregate_lambda(region)
+    def aggregate_R(self, region, time=Ellipsis):
+        lambda_regions = self.aggregate_lambda(region, time=time)
 
         agg = []
         for i in np.sort(np.unique(region)):
@@ -116,8 +116,8 @@ class Lineage(object):
             region_not_nan = np.isin(region_idx, self.nan_idx)
             agg.append(
                 (
-                    np.log(self.get_R(region_idx[region_not_nan]))
-                    * self.get_lambda_lineage(region_idx[region_not_nan])
+                    np.log(self.get_R(region_idx[region_not_nan], time=time))
+                    * self.get_lambda_lineage(region_idx[region_not_nan], time=time)
                 ).sum(1)
             )
 
