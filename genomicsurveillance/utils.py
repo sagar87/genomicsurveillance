@@ -283,6 +283,7 @@ def preprocess_lineage_tensor(
     lineage_tensor: np.ndarray,
     aliases: Optional[dict] = None,
     vocs: list = [],
+    cutoff: int = 100,
 ):
     """
     Preprocesses the lineage tensor.
@@ -307,7 +308,7 @@ def preprocess_lineage_tensor(
     refractory = refractory.index[refractory > 0].tolist()
 
     merged_lineages, cluster = merge_lineages(
-        alias_list, lineage_counts, skip=refractory + vocs
+        alias_list, lineage_counts, skip=refractory + vocs, cutoff=cutoff
     )
     lineage_tensor_red = aggregate_tensor(lineage_tensor, cluster)
     return merged_lineages, lineage_tensor_red
