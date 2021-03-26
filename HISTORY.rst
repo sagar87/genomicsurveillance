@@ -3,11 +3,15 @@ History
 *******
 
 
+0.3.0 (2021-03-26)
+==================
+
+* Added the ARMA model.
+
 0.2.5 (2021-03-25)
 ==================
 
 * Fix in R value calculation.
-
 
 0.2.3 (2021-03-25)
 ==================
@@ -20,7 +24,6 @@ History
 * Bugifixes.
 * Updated deterministic module.
 * Plotting functions.
-
 
 0.2.1 (2021-03-23)
 ==================
@@ -45,19 +48,16 @@ History
 * SVIHandler allows to dump params.
 * Refactored model.py.
 
-
 0.1.3 (2021-03-10)
 ==================
 
 * Helper functions to process lineage data.
 * Automated knot generation.
 
-
 0.1.2 (2021-03-10)
 ==================
 
 * Progress status in handler
-
 
 0.1.1 (2021-03-09)
 ==================
