@@ -34,16 +34,6 @@ def compute_lambda_lineage(model, idx):
     return lamb.reshape(*lamb.shape, 1) * prob
 
 
-def compute_R(model, idx):
-    return np.exp(
-        (
-            (model.posterior.dist(Sites.BETA1, idx) @ model.B[1].T)[..., np.newaxis]
-            + model.posterior.dist(Sites.B1, idx)
-        )
-        * model.tau
-    )
-
-
 def compute_transmissibility(model):
     return np.exp(model.posterior.dist(Sites.B1) * model.tau)
 

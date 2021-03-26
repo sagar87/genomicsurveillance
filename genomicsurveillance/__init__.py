@@ -6,7 +6,7 @@ Models to estimate the incidence of virus variants.
 """
 
 from .data import get_meta_data
-from .models import MultiLineage, SimpleMultiLineage
+from .models import MultiLineage, MultiLineageArma, SimpleMultiLineage
 from .utils import (
     aggregate_tensor,
     alias_lineages,
@@ -30,4 +30,5 @@ __all__ = [
     "epiestim_discretise_serial_interval",
     "MultiLineage",
     "SimpleMultiLineage",
+    "MultiLineageArma",
 ]

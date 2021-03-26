@@ -1,6 +1,3 @@
-from .models import MultiLineage, SimpleMultiLineage
+from .models import MultiLineage, MultiLineageArma, SimpleMultiLineage
 
-__all__ = [
-    "MultiLineage",
-    "SimpleMultiLineage",
-]
+__all__ = ["MultiLineage", "SimpleMultiLineage", "MultiLineageArma"]
