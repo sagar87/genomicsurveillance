@@ -12,57 +12,47 @@ from genomicsurveillance.utils import create_spline_basis, is_nan_row
 from .sites import Sites
 
 
-def nan_idx(cases, lineages):
-    exclude = list(set(is_nan_row(lineages)) | set(is_nan_row(cases)))
-    return np.array([i for i in range(cases.shape[0]) if i not in exclude])
-
-
-def missing_lineages(lineages):
-    return lineages[..., :-1].sum(1) != 0
-
-
-def expand(array: jnp.ndarray, index, shape: tuple) -> jnp.ndarray:
-    """Creates an a zero array with shape `shape` and fills it with `array` at index."""
-    expanded_array = jnp.zeros(shape)
-    expanded_array = index_update(expanded_array, index, array)
-    return expanded_array
-
-
-def pad_array(array, func=np.zeros):
-    pad = np.zeros(tuple([i for i in array.shape[:-1]]))
-    pad = pad.reshape(*pad.shape, 1)
-    return np.concatenate([array, pad], -1)
-
-
-def pad(array: jnp.ndarray, func=jnp.zeros):
-    """Adds an additional column to an three dimensional array."""
-    return jnp.concatenate(
-        [array, func((array.shape[0], *[1 for _ in range(array.ndim - 1)]))], -1
-    )
-
-
-def rescale_b(b, scale):
-    return b / scale
-
-
-def expand_posterior(array: np.ndarray, index: np.ndarray, shape: tuple) -> np.ndarray:
-    expanded_array = np.zeros((array.shape[0], *shape))
-    expanded_array[:, index] = array
-    return expanded_array
-
-
 class Lineage(object):
+    """
+    Implements Lineage model helper.
+    """
+
     def __init__(self):
         pass
+
+    def _nan_idx(self, cases, lineages):
+        exclude = list(set(is_nan_row(lineages)) | set(is_nan_row(cases)))
+        return np.array([i for i in range(cases.shape[0]) if i not in exclude])
+
+    def _missing_lineages(self, lineages):
+        return lineages[..., :-1].sum(1) != 0
+
+    def _is_int(self, array):
+        if type(array) == int:
+            return [array]
+        return array
 
     def _expand_dims(self, array, num_dim=4, dim=1):
         if array.ndim < num_dim:
             array = np.expand_dims(array, dim)
         return array
 
+    def expand(self, array: jnp.ndarray, index, shape: tuple) -> jnp.ndarray:
+        """Creates an a zero array with shape `shape` and fills it with `array` at index."""
+        expanded_array = jnp.zeros(shape)
+        expanded_array = index_update(expanded_array, index, array)
+        return expanded_array
+
+    def pad(self, array: jnp.ndarray, func=jnp.zeros):
+        """Adds an additional column to an three dimensional array."""
+        return jnp.concatenate(
+            [array, func((array.shape[0], *[1 for _ in range(array.ndim - 1)]))], -1
+        )
+
     def get_logits(self, idx, time=Ellipsis):
+
         logits = self.posterior.dist(Sites.B1, idx) * np.arange(0, self.num_time)[
-            time
+            self._is_int(time)
         ].reshape(1, -1, 1) + self.posterior.dist(Sites.C1, idx)
         logits = self._expand_dims(logits)
         return logits
@@ -77,7 +67,7 @@ class Lineage(object):
         beta = self._expand_dims(beta, 3)
 
         lamb = self.population[idx].reshape(1, -1, 1) * np.exp(
-            np.einsum("ijk,kl->ijl", beta, self.B[0][time].T)
+            np.einsum("ijk,kl->ijl", beta, self.B[0][self._is_int(time)].T)
         )
         lamb = self._expand_dims(lamb, dim=-1)
         return lamb
@@ -90,15 +80,15 @@ class Lineage(object):
         b1 = self._expand_dims(self.posterior.dist(Sites.B1, idx), dim=2)
         beta = self.posterior.dist(Sites.BETA1, idx)
         logR = self._expand_dims(
-            self._expand_dims(beta @ self.B[1][time].T, num_dim=3, dim=1),
+            self._expand_dims(beta @ self.B[1][self._is_int(time)].T, num_dim=3, dim=1),
             num_dim=4,
             dim=-1,
         )
 
         return jnp.exp(((logR - (np.einsum("mijk,milk->mijl", p, b1))) + b1) * self.tau)
 
-    def get_transmissibility(self, idx):
-        return np.exp(self.posterior.dist(Sites.B1) * self.tau)
+    def get_transmissibility(self):
+        return np.exp(self.posterior.dist(Sites.BC0) * self.tau)
 
     def aggregate_lambda(self, region, time=Ellipsis):
         agg = []
@@ -221,8 +211,10 @@ class MultiLineageArma(Model, Lineage):
         self.time_scale = time_scale
         self.auto_correlation = auto_correlation
 
-        self.nan_idx = nan_idx(cases, lineages)
-        self.missing_lineages = missing_lineages(lineages)[self.nan_idx].astype(int)
+        self.nan_idx = self._nan_idx(cases, lineages)
+        self.missing_lineages = self._missing_lineages(lineages)[self.nan_idx].astype(
+            int
+        )
         self.sample_deterministic = sample_deterministic
 
         if basis is None:
@@ -293,7 +285,7 @@ class MultiLineageArma(Model, Lineage):
 
         beta = npy.deterministic(
             Sites.BETA1,
-            expand(beta, index[self.nan_idx, :], (self.num_ltla, self.num_basis))
+            self.expand(beta, index[self.nan_idx, :], (self.num_ltla, self.num_basis))
             @ self.arma,
         )
 
@@ -330,8 +322,8 @@ class MultiLineageArma(Model, Lineage):
 
         b1 = npy.deterministic(
             Sites.B1,
-            pad(
-                expand(
+            self.pad(
+                self.expand(
                     (self.missing_lineages * b).reshape(self.num_ltla_lin, 1, -1),
                     index[self.nan_idx, :, :],
                     (self.num_ltla, 1, self.num_lin),
@@ -340,8 +332,8 @@ class MultiLineageArma(Model, Lineage):
         )
         c1 = npy.deterministic(
             Sites.C1,
-            pad(
-                expand(
+            self.pad(
+                self.expand(
                     c.reshape(self.num_ltla_lin, 1, -1),
                     index[self.nan_idx, :, :],
                     (self.num_ltla, 1, self.num_lin),
@@ -559,8 +551,10 @@ class MultiLineage(Model, Lineage):
 
         self.time_scale = time_scale
 
-        self.nan_idx = nan_idx(cases, lineages)
-        self.missing_lineages = missing_lineages(lineages)[self.nan_idx].astype(int)
+        self.nan_idx = self._nan_idx(cases, lineages)
+        self.missing_lineages = self._missing_lineages(lineages)[self.nan_idx].astype(
+            int
+        )
         self.sample_deterministic = sample_deterministic
 
         if basis is None:
@@ -602,7 +596,7 @@ class MultiLineage(Model, Lineage):
 
         beta = npy.deterministic(
             Sites.BETA1,
-            expand(beta, index[self.nan_idx, :], (self.num_ltla, self.num_basis)),
+            self.expand(beta, index[self.nan_idx, :], (self.num_ltla, self.num_basis)),
         )
 
         # MVN prior for b and c parameter
@@ -638,8 +632,8 @@ class MultiLineage(Model, Lineage):
 
         b1 = npy.deterministic(
             Sites.B1,
-            pad(
-                expand(
+            self.pad(
+                self.expand(
                     (self.missing_lineages * b).reshape(self.num_ltla_lin, 1, -1),
                     index[self.nan_idx, :, :],
                     (self.num_ltla, 1, self.num_lin),
@@ -648,8 +642,8 @@ class MultiLineage(Model, Lineage):
         )
         c1 = npy.deterministic(
             Sites.C1,
-            pad(
-                expand(
+            self.pad(
+                self.expand(
                     c.reshape(self.num_ltla_lin, 1, -1),
                     index[self.nan_idx, :, :],
                     (self.num_ltla, 1, self.num_lin),
@@ -862,8 +856,10 @@ class SimpleMultiLineage(Model, Lineage):
         self.rho_scale = rho_scale
         self.time_scale = time_scale
 
-        self.nan_idx = nan_idx(cases, lineages)
-        self.missing_lineages = missing_lineages(lineages)[self.nan_idx].astype(int)
+        self.nan_idx = self._nan_idx(cases, lineages)
+        self.missing_lineages = self._missing_lineages(lineages)[self.nan_idx].astype(
+            int
+        )
 
         self.sample_deterministic = sample_deterministic
 
@@ -906,7 +902,7 @@ class SimpleMultiLineage(Model, Lineage):
 
         beta = npy.deterministic(
             Sites.BETA1,
-            expand(beta, index[self.nan_idx, :], (self.num_ltla, self.num_basis)),
+            self.expand(beta, index[self.nan_idx, :], (self.num_ltla, self.num_basis)),
         )
 
         # MVN prior for b and c parameter
@@ -936,8 +932,8 @@ class SimpleMultiLineage(Model, Lineage):
 
         b1 = npy.deterministic(
             Sites.B1,
-            pad(
-                expand(
+            self.pad(
+                self.expand(
                     (self.missing_lineages * b).reshape(self.num_ltla_lin, 1, -1),
                     index[self.nan_idx, :, :],
                     (self.num_ltla, 1, self.num_lin),
@@ -946,8 +942,8 @@ class SimpleMultiLineage(Model, Lineage):
         )
         c1 = npy.deterministic(
             Sites.C1,
-            pad(
-                expand(
+            self.pad(
+                self.expand(
                     (self.missing_lineages * c).reshape(self.num_ltla_lin, 1, -1),
                     index[self.nan_idx, :, :],
                     (self.num_ltla, 1, self.num_lin),
