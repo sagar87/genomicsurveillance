@@ -88,7 +88,7 @@ class Lineage(object):
         return jnp.exp(((logR - (np.einsum("mijk,milk->mijl", p, b1))) + b1) * self.tau)
 
     def get_transmissibility(self):
-        return np.exp(self.posterior.dist(Sites.BC0) * self.tau)
+        return np.exp(self.posterior.dist(Sites.B0) * self.tau)
 
     def aggregate_lambda(self, region, time=Ellipsis):
         agg = []
@@ -150,7 +150,6 @@ class MultiLineageArma(Model, Lineage):
         Sites.BC0,
         Sites.B1,
         Sites.C1,
-        Sites.LAMBDA_LINEAGE,
     ]
 
     def __init__(
