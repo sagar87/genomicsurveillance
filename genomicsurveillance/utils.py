@@ -284,7 +284,7 @@ def preprocess_lineage_tensor(
     aliases: Optional[dict] = None,
     vocs: list = [],
     cutoff: int = 100,
-    refractory: bool = False
+    refractory: bool = False,
 ):
     """
     Preprocesses the lineage tensor.
@@ -303,7 +303,7 @@ def preprocess_lineage_tensor(
     lineage_counts = np.nansum(lineage_tensor, axis=(0, 1))
 
     # lineages of current interest
-    if refractory
+    if refractory:
         refractory = pd.DataFrame(
             np.nansum(lineage_tensor, axis=(0)), columns=alias_list
         ).iloc[-1]
