@@ -284,6 +284,7 @@ def preprocess_lineage_tensor(
     aliases: Optional[dict] = None,
     vocs: list = [],
     cutoff: int = 100,
+    refractory: bool = False
 ):
     """
     Preprocesses the lineage tensor.
@@ -302,13 +303,15 @@ def preprocess_lineage_tensor(
     lineage_counts = np.nansum(lineage_tensor, axis=(0, 1))
 
     # lineages of current interest
-    refractory = pd.DataFrame(
-        np.nansum(lineage_tensor, axis=(0)), columns=alias_list
-    ).iloc[-1]
-    refractory = refractory.index[refractory > 0].tolist()
+    if refractory
+        refractory = pd.DataFrame(
+            np.nansum(lineage_tensor, axis=(0)), columns=alias_list
+        ).iloc[-1]
+        refractory = refractory.index[refractory > 0].tolist()
+        vocs += refractory
 
     merged_lineages, cluster = merge_lineages(
-        alias_list, lineage_counts, skip=refractory + vocs, cutoff=cutoff
+        alias_list, lineage_counts, skip=vocs, cutoff=cutoff
     )
     lineage_tensor_red = aggregate_tensor(lineage_tensor, cluster)
     return merged_lineages, lineage_tensor_red
