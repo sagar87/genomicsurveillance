@@ -252,6 +252,7 @@ def merge_lineages(
 
     merging_indices = {}
     merged_lineages = []
+    droped_lineages = []
 
     sorted_identifier, other_identifier = sort_lineages(cluster_dict.keys())
 
@@ -259,13 +260,14 @@ def merge_lineages(
         (lineage_count, cluster) = cluster_dict[lineage]
         # drop lineages with zero counts
         if lineage_count == 0:
+            droped_lineages.append(lineage)
             continue
         merged_lineages.append(lineage)
         merging_indices[lineage_identifier.index(lineage)] = [
             lineage_identifier.index(i) for i in cluster
         ]
 
-    return merged_lineages, merging_indices
+    return merged_lineages, merging_indices, droped_lineages
 
 
 def aggregate_tensor(lineage_tensor, cluster):
@@ -310,9 +312,10 @@ def preprocess_lineage_tensor(
         refractory = refractory.index[refractory > 0].tolist()
         vocs += refractory
 
-    merged_lineages, cluster = merge_lineages(
+    merged_lineages, cluster, droped_lineages = merge_lineages(
         alias_list, lineage_counts, skip=vocs, cutoff=cutoff
     )
+    print("Dropped lineages", droped_lineages)
     lineage_tensor_red = aggregate_tensor(lineage_tensor, cluster)
     return merged_lineages, lineage_tensor_red, cluster
 
