@@ -314,7 +314,7 @@ def preprocess_lineage_tensor(
         alias_list, lineage_counts, skip=vocs, cutoff=cutoff
     )
     lineage_tensor_red = aggregate_tensor(lineage_tensor, cluster)
-    return merged_lineages, lineage_tensor_red
+    return merged_lineages, lineage_tensor_red, cluster
 
 
 def discretise_serial_interval(k, mu: float = 6.3, sigma: float = 4.2):
