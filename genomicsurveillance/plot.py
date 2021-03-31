@@ -35,7 +35,7 @@ def dot_plot(
     ax.legend()
 
 
-def plot_median_and_ci(dist, lineages=None, colors=None, ax=None):
+def plot_median_and_ci(dist, x=None, lineages=None, colors=None, ax=None):
     if ax is None:
         ax = plt.gca()
 
@@ -43,7 +43,10 @@ def plot_median_and_ci(dist, lineages=None, colors=None, ax=None):
         lineages = np.arange(dist.shape[-1])
 
     y = np.median(dist.squeeze(), 0)
-    x = np.arange(y.shape[0])
+
+    if x is None:
+        x = np.arange(y.shape[0])
+
     ci = np.quantile(dist.squeeze(), [0.025, 0.975], 0)
     if dist.squeeze().ndim >= 3:
         for lin in lineages:
