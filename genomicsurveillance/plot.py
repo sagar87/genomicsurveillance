@@ -60,7 +60,7 @@ def plot_median_and_ci(dist, x=None, lineages=None, colors=None, ax=None, label=
                 alpha=0.2,
             )
     else:
-        ax.plot(x, y, c="C0" if colors is None else colors)
+        ax.plot(x, y, c="C0" if colors is None else colors, label=label)
         ax.fill_between(
             x,
             ci[0],
