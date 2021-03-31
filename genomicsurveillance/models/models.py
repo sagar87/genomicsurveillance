@@ -171,7 +171,7 @@ class MultiLineageArma(Model, Lineage):
         rho_loc: float = np.log(10.0),
         rho_scale: float = 1.0,
         time_scale: float = 100.0,
-        auto_correlation: float = 0.9,
+        auto_correlation: float = 0.5,
         sample_deterministic: bool = False,
         *args,
         **kwargs,
