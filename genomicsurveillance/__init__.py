@@ -16,6 +16,7 @@ from .utils import (
     epiestim_R,
     merge_lineages,
     preprocess_lineage_tensor,
+    KnotList
 )
 
 __all__ = [
@@ -31,4 +32,5 @@ __all__ = [
     "MultiLineage",
     "SimpleMultiLineage",
     "MultiLineageArma",
+    "KnotList"
 ]
