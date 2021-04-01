@@ -17,15 +17,48 @@ class Lineage(object):
     Implements Lineage model helper.
     """
 
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        tau,
+        cases,
+        lineages,
+        lineage_dates,
+        population,
+        basis=None,
+        posterior=None,
+    ):
+        self.tau = tau
+        self.cases = cases
+        self.lineages = lineages
+        self.lineage_dates = lineage_dates
+        self.population = population
+        self.posterior = posterior
 
-    def _nan_idx(self, cases, lineages):
-        exclude = list(set(is_nan_row(lineages)) | set(is_nan_row(cases)))
-        return np.array([i for i in range(cases.shape[0]) if i not in exclude])
+        if basis is None:
+            _, self.B = create_spline_basis(
+                np.arange(cases.shape[1]),
+                num_knots=int(np.ceil(cases.shape[1] / 10)),
+                add_intercept=False,
+            )
+        else:
+            self.B = basis
 
-    def _missing_lineages(self, lineages):
-        return lineages[..., :-1].sum(1) != 0
+    @property
+    def nan_idx(self):
+        if not hasattr(self, "_nan_idx"):
+            exclude = list(set(is_nan_row(self.lineages)) | set(is_nan_row(self.cases)))
+            self._nan_idx = np.array(
+                [i for i in range(self.cases.shape[0]) if i not in exclude]
+            )
+        return self._nan_idx
+
+    @property
+    def missing_lineages(self):
+        if not hasattr(self, "_missing_lineages"):
+            self._missing_lineages = (self.lineages[..., :-1].sum(1) != 0)[
+                self.nan_idx
+            ].astype(int)
+        return self._missing_lineages
 
     def _is_int(self, array):
         if type(array) == int:
@@ -173,6 +206,7 @@ class MultiLineageArma(Model, Lineage):
         time_scale: float = 100.0,
         auto_correlation: float = 0.5,
         sample_deterministic: bool = False,
+        posterior=None,
         *args,
         **kwargs,
     ):
@@ -183,13 +217,12 @@ class MultiLineageArma(Model, Lineage):
         assert (
             cases.shape[0] == lineages.shape[0]
         ), "cases and lineages must have the number of location"
-        super().__init__(**kwargs)
-        self.cases = cases
-        self.lineages = lineages
-        self.lineage_dates = lineage_dates
-        self.population = population
+        Model.__init__(self, **kwargs)
+        Lineage.__init__(
+            self, tau, cases, lineages, lineage_dates, population, basis, posterior
+        )
+        # super().__init__(**kwargs)
 
-        self.tau = tau
         self.init_scale = init_scale
         self.fit_rho = fit_rho
 
@@ -210,20 +243,7 @@ class MultiLineageArma(Model, Lineage):
         self.time_scale = time_scale
         self.auto_correlation = auto_correlation
 
-        self.nan_idx = self._nan_idx(cases, lineages)
-        self.missing_lineages = self._missing_lineages(lineages)[self.nan_idx].astype(
-            int
-        )
         self.sample_deterministic = sample_deterministic
-
-        if basis is None:
-            _, self.B = create_spline_basis(
-                np.arange(cases.shape[1]),
-                num_knots=int(np.ceil(cases.shape[1] / 10)),
-                add_intercept=False,
-            )
-        else:
-            self.B = basis
 
         self.num_ltla = self.cases.shape[0]
         self.num_time = self.cases.shape[1]
