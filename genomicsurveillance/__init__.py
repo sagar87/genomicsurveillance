@@ -8,6 +8,7 @@ Models to estimate the incidence of virus variants.
 from .data import get_meta_data
 from .models import MultiLineage, MultiLineageArma, SimpleMultiLineage
 from .utils import (
+    KnotList,
     aggregate_tensor,
     alias_lineages,
     create_date_list,
@@ -16,7 +17,6 @@ from .utils import (
     epiestim_R,
     merge_lineages,
     preprocess_lineage_tensor,
-    KnotList
 )
 
 __all__ = [
@@ -32,5 +32,5 @@ __all__ = [
     "MultiLineage",
     "SimpleMultiLineage",
     "MultiLineageArma",
-    "KnotList"
+    "KnotList",
 ]
