@@ -35,7 +35,9 @@ def dot_plot(
     ax.legend()
 
 
-def plot_median_and_ci(dist, x=None, lineages=None, colors=None, ax=None, label=None):
+def plot_median_and_ci(
+    dist, x=None, lineages=None, colors=None, ax=None, label=None, alpha=0.2
+):
     if ax is None:
         ax = plt.gca()
 
@@ -57,7 +59,7 @@ def plot_median_and_ci(dist, x=None, lineages=None, colors=None, ax=None, label=
                 ci[0, ..., lin],
                 ci[1, ..., lin],
                 color=f"C{lin%10}" if colors is None else colors[lin],
-                alpha=0.2,
+                alpha=alpha,
             )
     else:
         ax.plot(x, y, c="C0" if colors is None else colors, label=label)
@@ -66,7 +68,7 @@ def plot_median_and_ci(dist, x=None, lineages=None, colors=None, ax=None, label=
             ci[0],
             ci[1],
             color="C0" if colors is None else colors,
-            alpha=0.2,
+            alpha=alpha,
         )
 
     return ax
