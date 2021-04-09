@@ -3,16 +3,18 @@ name = "genomicsurveillance"
 packages = [
     { include = "genomicsurveillance" },
 ]
-version = "0.1.0"
+version = "0.3.0"
 description = ""
 authors = ["Harald Vohringer <harald.voeh@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.7.1"
-numpy = "^1.20.1"
 numpyro = "^0.5.0"
-pandas = "^1.2.3"
+pandas = "^1.1.0"
 sphinx = {version = "^3", optional = true}
+uk-covid19 = {version = "^1.2.0", optional = true}
+geopandas = {version = "^0.9.0", optional = true}
+matplotlib = {version = "^3.3.4", optional = true}
 
 
 [tool.poetry.dev-dependencies]
@@ -25,12 +27,12 @@ bandit = "^1.7.0"
 safety = "^1.10.3"
 jupyter = "^1.0.0"
 jupyterlab = "^3.0.9"
-matplotlib = "^3.3.4"
-geopandas = "^0.9.0"
-uk-covid19 = "^1.2.0"
 
 [tool.poetry.extras]
 docs = ["sphinx"]
+uk-covid19 = ["uk-covid19"]
+geopandas = ["geopandas"]
+matplotlib = ["matplotlib"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

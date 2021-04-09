@@ -1,13 +1,22 @@
+import pickle
 from functools import lru_cache
 
 import jax.numpy as jnp
 import numpy as np
 from jax import lax, random
+from jax.experimental import host_callback
 from numpyro import optim
 from numpyro.diagnostics import hpdi
-from numpyro.infer import SVI, Predictive, Trace_ELBO
+from numpyro.infer import MCMC, NUTS, SVI, Predictive, Trace_ELBO
 
 from genomicsurveillance.types import Guide, Model
+
+
+def _print_consumer(arg, transform):
+    iter_num, num_samples = arg
+    print(
+        f"SVI step {iter_num:,} / {num_samples:,} | {iter_num/num_samples * 100:.0f} %"
+    )
 
 
 class Posterior(object):
@@ -25,6 +34,18 @@ class Posterior(object):
 
     def _to_numpy(self, posterior):
         return {k: np.asarray(v) for k, v in posterior.items()}
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def keys(self):
+        return self.data.keys()
+
+    def items(self):
+        return self.data.items()
 
     @lru_cache(maxsize=128)
     def median(self, param, *args, **kwargs):
@@ -71,8 +92,29 @@ class Posterior(object):
             self.mean(param, *args, **kwargs) - self.hpdi(param, *args, **kwargs)
         )
 
+    def dist(self, param, *args, **kwargs):
+        return self[param][tuple([slice(None), *args])]
 
-class SVIHandler(object):
+
+class Handler(object):
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def fit(self):
+        raise NotImplementedError
+
+    def predict(self):
+        raise NotImplementedError
+
+    def dump_posterior(self, file_name: str):
+        assert self.posterior is not None, "'init_svi' needs to be called first"
+        pickle.dump(self.posterior.data, open(file_name, "wb"))
+
+    def load_posterior(self, file_name):
+        self.posterior = Posterior(pickle.load(open(file_name, "rb")))
+
+
+class SVIHandler(Handler):
     """
     Helper object that abstracts some of numpyros complexities. Inspired
     by an implementation of Florian Wilhelm.
@@ -100,8 +142,8 @@ class SVIHandler(object):
         rng_key: int = 254,
         num_epochs: int = 5000,
         num_samples: int = 1000,
-        log_func=print,
-        log_freq=0,
+        log_func=_print_consumer,
+        log_freq=1000,
         to_numpy: bool = True,
     ):
         self.model = model
@@ -125,11 +167,22 @@ class SVIHandler(object):
         msg = f"epoch: {str(epoch).rjust(n_digits)} loss: {loss: 16.4f}"
         self.log_func(msg)
 
-    def _fit(self, epochs, *args):
+    def _fit(self, *args):
+        def _step(state, i, *args):
+            state = lax.cond(
+                i % self.log_freq == 0,
+                lambda _: host_callback.id_tap(
+                    self.log_func, (i, self.num_epochs), result=state
+                ),
+                lambda _: state,
+                operand=None,
+            )
+            return self.svi.update(state, *args)
+
         return lax.scan(
-            lambda state, i: self.svi.update(state, *args),
+            lambda state, i: _step(state, i, *args),
             self.init_state,
-            jnp.arange(epochs),
+            jnp.arange(self.num_epochs),
         )
 
     def _update_state(self, state, loss):
@@ -137,28 +190,14 @@ class SVIHandler(object):
         self.init_state = state
         self.loss = loss if self.loss is None else jnp.concatenate([self.loss, loss])
 
-    def fit(self, *args, **kwargs):
-        num_epochs = kwargs.get("num_epochs", self.num_epochs)
-        log_freq = kwargs.get("log_freq", self.log_freq)
+    def fit(self, predictive_kwargs: dict = {}, *args, **kwargs):
+        self.num_epochs = kwargs.get("num_epochs", self.num_epochs)
 
         if self.init_state is None:
             self.init_state = self.svi.init(self.rng_key, *args)
 
-        if log_freq <= 0:
-            state, loss = self._fit(num_epochs, *args)
-            self._update_state(state, loss)
-        else:
-            steps, rest = num_epochs // log_freq, num_epochs % log_freq
-
-            for step in range(steps):
-                state, loss = self._fit(log_freq, *args)
-                self._log(log_freq * (step + 1), loss[-1])
-                self._update_state(state, loss)
-
-            if rest > 0:
-                state, loss = self._fit(rest, *args)
-                self._update_state(state, loss)
-
+        state, loss = self._fit(*args)
+        self._update_state(state, loss)
         self.params = self.svi.get_params(state)
 
         predictive = Predictive(
@@ -166,11 +205,12 @@ class SVIHandler(object):
             guide=self.guide,
             params=self.params,
             num_samples=self.num_samples,
+            **predictive_kwargs,
         )
 
         self.posterior = Posterior(predictive(self.rng_key, *args), self.to_numpy)
 
-    def get_posterior_predictive(self, *args, **kwargs):
+    def predict(self, *args, **kwargs):
         """kwargs -> Predictive, args -> predictive"""
         num_samples = kwargs.pop("num_samples", self.num_samples)
         rng_key = kwargs.pop("rng_key", self.rng_key)
@@ -184,6 +224,48 @@ class SVIHandler(object):
         )
 
         self.predictive = Posterior(predictive(rng_key, *args), self.to_numpy)
+
+    def dump_params(self, file_name: str):
+        assert self.params is not None, "'init_svi' needs to be called first"
+        pickle.dump(self.params, open(file_name, "wb"))
+
+    def load_params(self, file_name):
+        self.params = pickle.load(open(file_name, "rb"))
+
+
+class NutsHandler(Handler):
+    def __init__(
+        self,
+        model,
+        num_warmup=2000,
+        num_samples=10000,
+        num_chains=1,
+        rng_key=0,
+        to_numpy: bool = True,
+        *args,
+        **kwargs,
+    ):
+        self.model = model
+        self.num_warmup = num_warmup
+        self.num_samples = num_samples
+        self.num_chains = num_chains
+        self.rng_key, self.rng_key_ = random.split(random.PRNGKey(rng_key))
+        self.to_numpy = to_numpy
+        self.kernel = NUTS(model, **kwargs)
+        self.mcmc = MCMC(self.kernel, num_warmup, num_samples, num_chains=num_chains)
+
+    def predict(self, *args, **kwargs):
+        predictive = Predictive(self.model, self.posterior, **kwargs)
+        self.predictive = predictive(self.rng_key_, *args)
+
+    def fit(self, *args, **kwargs):
+        self.num_samples = kwargs.get("num_samples", self.num_samples)
+
+        self.mcmc.run(self.rng_key_, *args, **kwargs)
+        self.posterior = Posterior(self.mcmc.get_samples(), self.to_numpy)
+
+    def summary(self, *args, **kwargs):
+        self.mcmc.print_summary(*args, **kwargs)
 
 
 class SVIModel(SVIHandler):
@@ -200,3 +282,36 @@ class SVIModel(SVIHandler):
 
     def guide(self):
         raise NotImplementedError()
+
+
+class Model(SVIHandler, NutsHandler):
+    _latent_variables = []
+
+    def __init__(self, handler, *args, **kwargs):
+        self.handler = handler
+        if handler == "SVI":
+            SVIHandler.__init__(self, self.model, self.guide, *args, **kwargs)
+        elif handler == "NUTS":
+            NutsHandler.__init__(self, self.model, *args, **kwargs)
+
+    def model(self):
+        raise NotImplementedError()
+
+    def guide(self):
+        raise NotImplementedError()
+
+    def fit(
+        self, predictive_kwargs: dict = {}, deterministic: bool = True, *args, **kwargs
+    ):
+        if self.handler == "SVI":
+            if len(predictive_kwargs) == 0:
+                predictive_kwargs["return_sites"] = tuple(self._latent_variables)
+            SVIHandler.fit(self, predictive_kwargs=predictive_kwargs, *args, **kwargs)
+        elif self.handler == "NUTS":
+            NutsHandler.fit(self, *args, **kwargs)
+
+        if deterministic:
+            self.deterministic()
+
+    def deterministic(self):
+        pass

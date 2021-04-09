@@ -10,7 +10,9 @@ Welcome to genomicsurveillance's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   readme
    reference
+   changelog
 
 Indices and tables
 ==================
