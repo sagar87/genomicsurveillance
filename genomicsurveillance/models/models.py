@@ -196,6 +196,7 @@ class MultiLineageArma(Model, Lineage):
         init_scale: float = 0.1,
         beta_loc: float = -10.0,
         beta_scale: float = 1.0,
+        b0_loc: float = 0.0,
         b0_scale: float = 0.2,
         c0_loc: float = -10.0,
         c0_scale: float = 5.0,
@@ -229,7 +230,7 @@ class MultiLineageArma(Model, Lineage):
         self.beta_loc = beta_loc
         self.beta_scale = beta_scale
 
-        self.b0_loc = 0.0
+        self.b0_loc = b0_loc
         self.b0_scale = b0_scale
         self.c0_loc = c0_loc
         self.c0_scale = c0_scale
