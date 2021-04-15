@@ -108,6 +108,9 @@ class Lineage(object):
     def get_lambda_lineage(self, idx, time=Ellipsis):
         return self.get_lambda(idx, time=time) * self.get_probabilities(idx, time=time)
 
+    def get_logR(self, idx):
+        return (self.posterior.dist(Sites.BETA1, idx) @ self.B[1].T) * self.tau
+
     def get_R(self, idx, time=Ellipsis):
         p = self.get_probabilities(idx, time=time)
         b1 = self._expand_dims(self.posterior.dist(Sites.B1, idx), dim=2)

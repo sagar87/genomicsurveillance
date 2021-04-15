@@ -210,6 +210,8 @@ class SVIHandler(Handler):
 
         self.posterior = Posterior(predictive(self.rng_key, *args), self.to_numpy)
 
+        return self
+
     def predict(self, *args, **kwargs):
         """kwargs -> Predictive, args -> predictive"""
         num_samples = kwargs.pop("num_samples", self.num_samples)
