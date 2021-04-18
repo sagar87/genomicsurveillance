@@ -169,7 +169,7 @@ class Lineage(object):
                 ).sum(1)
             )
 
-        return np.exp(np.stack(agg, 1) / lambda_regions)
+        return np.exp(np.stack(agg, 1) / lambda_regions.sum(-1))
 
 
 class MultiLineageArma(Model, Lineage):
