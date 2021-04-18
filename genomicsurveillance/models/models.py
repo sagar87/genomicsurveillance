@@ -165,7 +165,7 @@ class Lineage(object):
             agg.append(
                 (
                     self.get_average_log_R(region_idx[region_not_nan], time=time)
-                    * self.get_lambda(region_idx[region_not_nan], time=time)
+                    * self.get_lambda(region_idx[region_not_nan], time=time).squeeze()
                 ).sum(1)
             )
 
