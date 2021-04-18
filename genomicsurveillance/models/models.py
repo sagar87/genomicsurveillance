@@ -108,8 +108,10 @@ class Lineage(object):
     def get_lambda_lineage(self, idx, time=Ellipsis):
         return self.get_lambda(idx, time=time) * self.get_probabilities(idx, time=time)
 
-    def get_logR(self, idx):
-        return (self.posterior.dist(Sites.BETA1, idx) @ self.B[1].T) * self.tau
+    def get_average_log_R(self, idx, time=Ellipsis):
+        return (
+            self.posterior.dist(Sites.BETA1, idx) @ self.B[1][self._is_int(time)].T
+        ) * self.tau
 
     def get_R(self, idx, time=Ellipsis):
         p = self.get_probabilities(idx, time=time)
@@ -148,6 +150,22 @@ class Lineage(object):
                 (
                     np.log(self.get_R(region_idx[region_not_nan], time=time))
                     * self.get_lambda_lineage(region_idx[region_not_nan], time=time)
+                ).sum(1)
+            )
+
+        return np.exp(np.stack(agg, 1) / lambda_regions)
+
+    def aggregate_average_R(self, region, time=Ellipsis):
+        lambda_regions = self.aggregate_lambda(region, time=time)
+
+        agg = []
+        for i in np.sort(np.unique(region)):
+            region_idx = np.where(region == i)[0]
+            region_not_nan = np.isin(region_idx, self.nan_idx)
+            agg.append(
+                (
+                    self.get_average_log_R(region_idx[region_not_nan], time=time)
+                    * self.get_lambda(region_idx[region_not_nan], time=time)
                 ).sum(1)
             )
 
