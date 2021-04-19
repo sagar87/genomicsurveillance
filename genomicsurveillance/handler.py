@@ -258,7 +258,7 @@ class NutsHandler(Handler):
 
     def predict(self, *args, **kwargs):
         predictive = Predictive(self.model, self.posterior.data, **kwargs)
-        self.predictive = predictive(self.rng_key_, *args)
+        self.predictive = Posterior(predictive(self.rng_key_, *args))
 
     def fit(self, *args, **kwargs):
         self.num_samples = kwargs.get("num_samples", self.num_samples)
