@@ -257,7 +257,7 @@ class NutsHandler(Handler):
         self.mcmc = MCMC(self.kernel, num_warmup, num_samples, num_chains=num_chains)
 
     def predict(self, *args, **kwargs):
-        predictive = Predictive(self.model, self.posterior, **kwargs)
+        predictive = Predictive(self.model, self.posterior.data, **kwargs)
         self.predictive = predictive(self.rng_key_, *args)
 
     def fit(self, *args, **kwargs):
