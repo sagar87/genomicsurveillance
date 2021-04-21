@@ -47,6 +47,23 @@ class Posterior(object):
     def items(self):
         return self.data.items()
 
+    def indices(self, shape, *args):
+        """
+        Creates indices.
+        """
+        indices = [np.arange(shape[0])]
+        for i, arg in enumerate(args):
+            if arg is None:
+                indices.append(np.arange(shape[i + 1]))
+            else:
+                if isinstance(arg, int):
+                    indices.append(np.array([arg]))
+                elif isinstance(arg, list):
+                    indices.append(np.array(arg))
+                else:
+                    indices.append(arg)
+        return indices
+
     @lru_cache(maxsize=128)
     def median(self, param, *args, **kwargs):
         """Returns the median of param."""
@@ -93,7 +110,8 @@ class Posterior(object):
         )
 
     def dist(self, param, *args, **kwargs):
-        return self[param][tuple([slice(None), *args])]
+        indices = self.indices(self[param].shape, *args)
+        return self[param][np.ix_(*indices)]
 
 
 class Handler(object):
