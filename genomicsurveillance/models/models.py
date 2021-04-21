@@ -80,7 +80,7 @@ class Lineage(object):
         indices = []
         for i, arg in enumerate(args):
             if arg is None:
-                indices.append(np.arange(shape[i + 1]))
+                indices.append(np.arange(shape[i]))
             else:
                 indices.append(make_array(arg))
 
