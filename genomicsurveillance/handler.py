@@ -1,5 +1,5 @@
+import functools
 import pickle
-from functools import lru_cache
 
 import jax.numpy as jnp
 import numpy as np
@@ -10,6 +10,23 @@ from numpyro.diagnostics import hpdi
 from numpyro.infer import MCMC, NUTS, SVI, Predictive, Trace_ELBO
 
 from genomicsurveillance.types import Guide, Model
+
+
+def ignore_unhashable(func):
+    uncached = func.__wrapped__
+    attributes = functools.WRAPPER_ASSIGNMENTS + ("cache_info", "cache_clear")
+
+    @functools.wraps(func, assigned=attributes)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except TypeError as error:
+            if "unhashable type" in str(error):
+                return uncached(*args, **kwargs)
+            raise
+
+    wrapper.__uncached__ = uncached
+    return wrapper
 
 
 def _print_consumer(arg, transform):
@@ -49,7 +66,7 @@ class Posterior(object):
 
     def indices(self, shape, *args):
         """
-        Creates indices.
+        Creates indices for easier access to variables.
         """
         indices = [np.arange(shape[0])]
         for i, arg in enumerate(args):
@@ -64,27 +81,36 @@ class Posterior(object):
                     indices.append(arg)
         return indices
 
-    @lru_cache(maxsize=128)
-    def median(self, param, *args, **kwargs):
+    def dist(self, param, *args, **kwargs):
+        indices = self.indices(self[param].shape, *args)
+        return self[param][np.ix_(*indices)]
+
+    @ignore_unhashable
+    @functools.lru_cache(maxsize=128)
+    def median(self, param, *args):
         """Returns the median of param."""
-        return jnp.median(self.data[param][tuple([slice(None), *args])], axis=0)
+        return np.median(self.dist(param, *args), axis=0)
 
-    @lru_cache(maxsize=128)
-    def mean(self, param, *args, **kwargs):
+    @ignore_unhashable
+    @functools.lru_cache(maxsize=128)
+    def mean(self, param, *args):
         """Returns the mean of param."""
-        return self.data[param][tuple([slice(None), *args])].mean(0)
+        return np.mean(self.dist(param, *args), axis=0)
 
-    @lru_cache(maxsize=128)
+    @ignore_unhashable
+    @functools.lru_cache(maxsize=128)
     def hpdi(self, param, *args, **kwargs):
         """Returns the highest predictive density interval of param."""
-        return hpdi(self.data[param][tuple([slice(None), *args])], **kwargs)
+        return hpdi(self.dist(param, *args), **kwargs)
 
-    @lru_cache(maxsize=128)
+    @ignore_unhashable
+    @functools.lru_cache(maxsize=128)
     def quantiles(self, param, *args, **kwargs):
         """Returns the quantiles of param."""
-        return jnp.quantile(
-            self.data[param][tuple([slice(None), *args])],
-            jnp.array([0.025, 0.975]),
+        q = kwargs.pop("q", [0.025, 0.975])
+        return np.quantile(
+            self.dist(param, *args),
+            q,
             axis=0,
         )
 
@@ -105,13 +131,7 @@ class Posterior(object):
         return self.hpdi(param, *args, **kwargs)[1]
 
     def ci(self, param, *args, **kwargs):
-        return np.abs(
-            self.mean(param, *args, **kwargs) - self.hpdi(param, *args, **kwargs)
-        )
-
-    def dist(self, param, *args, **kwargs):
-        indices = self.indices(self[param].shape, *args)
-        return self[param][np.ix_(*indices)]
+        return np.abs(self.mean(param, *args) - self.hpdi(param, *args, **kwargs))
 
 
 class Handler(object):
