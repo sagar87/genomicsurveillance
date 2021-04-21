@@ -6,7 +6,7 @@ from jax.ops import index, index_update
 from jax.scipy.special import logsumexp
 
 from genomicsurveillance.distributions import NegativeBinomial
-from genomicsurveillance.handler import Model
+from genomicsurveillance.handler import Model, make_array
 from genomicsurveillance.utils import create_spline_basis, is_nan_row
 
 from .sites import Sites
@@ -72,6 +72,19 @@ class Lineage(object):
         if array.ndim < num_dim:
             array = np.expand_dims(array, dim)
         return array
+
+    def indices(self, shape, *args):
+        """
+        Creates indices for easier access to variables.
+        """
+        indices = []
+        for i, arg in enumerate(args):
+            if arg is None:
+                indices.append(np.arange(shape[i + 1]))
+            else:
+                indices.append(make_array(arg))
+
+        return np.ix_(*indices)
 
     def expand(self, array: jnp.ndarray, index, shape: tuple) -> jnp.ndarray:
         """Creates an a zero array with shape `shape` and fills it with `array` at index."""

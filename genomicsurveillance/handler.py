@@ -36,6 +36,17 @@ def _print_consumer(arg, transform):
     )
 
 
+def make_array(arg):
+    if isinstance(arg, int):
+        arr = np.array([arg])
+    elif isinstance(arg, list):
+        arr = np.array(arg)
+    else:
+        arr = arg
+
+    return arr
+
+
 class Posterior(object):
     """
     Caches a posterior.
@@ -64,7 +75,7 @@ class Posterior(object):
     def items(self):
         return self.data.items()
 
-    def indices(self, shape, *args):
+    def posterior_indices(self, shape, *args):
         """
         Creates indices for easier access to variables.
         """
@@ -73,17 +84,12 @@ class Posterior(object):
             if arg is None:
                 indices.append(np.arange(shape[i + 1]))
             else:
-                if isinstance(arg, int):
-                    indices.append(np.array([arg]))
-                elif isinstance(arg, list):
-                    indices.append(np.array(arg))
-                else:
-                    indices.append(arg)
-        return indices
+                indices.append(make_array(arg))
+        return np.ix_(*indices)
 
     def dist(self, param, *args, **kwargs):
-        indices = self.indices(self[param].shape, *args)
-        return self[param][np.ix_(*indices)]
+        indices = self.posterior_indices(self[param].shape, *args)
+        return self[param][indices]
 
     @ignore_unhashable
     @functools.lru_cache(maxsize=128)
