@@ -34,6 +34,7 @@ class Sites:
     R_1 = "R_1"
     R = "R"
     P = "p"
+    T = "t"
 
     CASES = "specimen"
     LINEAGE = "lineage"
