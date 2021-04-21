@@ -75,7 +75,7 @@ class Posterior(object):
     def items(self):
         return self.data.items()
 
-    def posterior_indices(self, shape, *args):
+    def indices(self, shape, *args):
         """
         Creates indices for easier access to variables.
         """
@@ -88,7 +88,7 @@ class Posterior(object):
         return np.ix_(*indices)
 
     def dist(self, param, *args, **kwargs):
-        indices = self.posterior_indices(self[param].shape, *args)
+        indices = self.indices(self[param].shape, *args)
         return self[param][indices]
 
     @ignore_unhashable

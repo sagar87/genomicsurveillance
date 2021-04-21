@@ -106,9 +106,9 @@ class Lineage(object):
         logits = self._expand_dims(logits)
         return logits
 
-    def get_probabilities(self, idx, time=Ellipsis):
-        logits = self.get_logits(idx, time=time)
-        p = np.exp(logits) / np.exp(logsumexp(logits, -1, keepdims=True))
+    def get_probabilities(self, idx, time=None, lineage=None):
+        logits = self.get_logits(idx, time=time, lineage=lineage)
+        p = np.exp(logits - logsumexp(logits, -1, keepdims=True))
         return p
 
     def get_lambda(self, idx, time=Ellipsis):
