@@ -190,8 +190,9 @@ class SVIHandler(Handler):
         self.init_state = state
         self.loss = loss if self.loss is None else jnp.concatenate([self.loss, loss])
 
-    def fit(self, predictive_kwargs: dict = {}, *args, **kwargs):
-        self.num_epochs = kwargs.get("num_epochs", self.num_epochs)
+    def fit(self, *args, **kwargs):
+        self.num_epochs = kwargs.pop("num_epochs", self.num_epochs)
+        predictive_kwargs = kwargs.pop("predictive_kwargs", {})
 
         if self.init_state is None:
             self.init_state = self.svi.init(self.rng_key, *args)

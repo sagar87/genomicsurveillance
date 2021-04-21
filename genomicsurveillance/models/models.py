@@ -62,8 +62,11 @@ class Lineage(object):
 
     def _is_int(self, array):
         if type(array) == int:
-            return [array]
-        return array
+            return np.array([array])
+        elif type(array) == list:
+            return np.array(array)
+        else:
+            return array
 
     def _expand_dims(self, array, num_dim=4, dim=1):
         if array.ndim < num_dim:
