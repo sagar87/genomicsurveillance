@@ -565,15 +565,15 @@ class MultiLineageClockReset(Model, Lineage):
 
         if self.independent_clock:
             t_offset = npy.sample(
-                "t",
-                dist.Categorical(jnp.ones(self.offset) / self.offset).expand_array(
+                Sites.T,
+                dist.Categorical(jnp.ones(self.offset) / self.offset).expand(
                     [self.num_ltla, self.num_lin + 1]
                 ),
             )
         else:
             t_offset = npy.sample(
-                "t",
-                dist.Categorical(jnp.ones(self.offset) / self.offset).expand_array(
+                Sites.T,
+                dist.Categorical(jnp.ones(self.offset) / self.offset).expand(
                     [1, self.num_lin + 1]
                 ),
             )
