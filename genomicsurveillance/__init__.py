@@ -6,7 +6,12 @@ Models to estimate the incidence of virus variants.
 """
 
 from .data import get_meta_data
-from .models import MultiLineage, MultiLineageArma, SimpleMultiLineage
+from .models import (
+    MultiLineage,
+    MultiLineageArma,
+    MultiLineageClockReset,
+    SimpleMultiLineage,
+)
 from .utils import (
     KnotList,
     aggregate_tensor,
@@ -32,5 +37,6 @@ __all__ = [
     "MultiLineage",
     "SimpleMultiLineage",
     "MultiLineageArma",
+    "MultiLineageClockReset",
     "KnotList",
 ]
