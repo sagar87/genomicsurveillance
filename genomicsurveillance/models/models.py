@@ -143,23 +143,6 @@ class Lineage(object):
     def get_lambda_lineage(self, ltla=None, time=None, lineage=None):
         return self.get_lambda(ltla, time) * self.get_probabilities(ltla, time, lineage)
 
-    def get_average_log_R(self, idx, time=Ellipsis):
-        return (
-            self.posterior.dist(Sites.BETA1, idx) @ self.B[1][self._is_int(time)].T
-        ) * self.tau
-
-    def get_R(self, idx, time=Ellipsis):
-        p = self.get_probabilities(idx, time=time)
-        b1 = self.expand_dims(self.posterior.dist(Sites.B1, idx), dim=2)
-        beta = self.posterior.dist(Sites.BETA1, idx)
-        logR = self.expand_dims(
-            self.expand_dims(beta @ self.B[1][self._is_int(time)].T, num_dim=3, dim=1),
-            num_dim=4,
-            dim=-1,
-        )
-
-        return jnp.exp(((logR - (np.einsum("mijk,milk->mijl", p, b1))) + b1) * self.tau)
-
     def get_transmissibility(self, rebase=None):
         b = self.posterior.dist(Sites.B0)
         b = np.concatenate([b, np.zeros((b.shape[0], 1))], -1)
@@ -169,19 +152,46 @@ class Lineage(object):
 
         return np.exp(b * self.tau)
 
-    def get_other_R(self, ltla=None, time=None, exclude="B.1.1.7"):
+    def get_log_R(self, ltla=None, time=None):
+        log_R = (
+            self.posterior.dist(Sites.BETA1, ltla)
+            @ self.B[self.indices(self.B.shape, 1, time)].T.squeeze()
+        ) * self.tau
+
+        if log_R.ndim == 2:
+            if isinstance(time, int):
+                log_R = self.expand_dims(log_R, num_dim=3, dim=2)
+            if isinstance(ltla, int):
+                log_R = self.expand_dims(log_R, num_dim=3, dim=3)
+
+        return self.expand_dims(log_R, num_dim=4, dim=-1)
+
+    def get_average_log_R(self, idx, time=Ellipsis):
+        return (
+            self.posterior.dist(Sites.BETA1, idx)
+            @ self.B[self.indices(self.B.shape, 1, time)].T.squeeze()
+        ) * self.tau
+
+    def get_log_R_lineage(self, ltla=None, time=None, lineage=None):
+        p = self.get_probabilities(ltla, time, lineage)
+        # TODO: set this up
+        # b = self.posterior.dist(Sites.B0, lineage)
+        # b1 = np.concatenate([b, np.zeros((b.shape[0], 1))], -1)
+        b1 = self.expand_dims(self.posterior.dist(Sites.B1, ltla, None, lineage), dim=2)
+        log_R = self.get_log_R(ltla, time)
+        return ((log_R - (np.einsum("mijk,milk->mijl", p, b1))) + b1) * self.tau
+
+    def get_other_log_R(self, exclude, ltla=None, time=None):
         p = self.get_probabilities(ltla, time)
         b = self.posterior.dist(Sites.B0)
         b = np.concatenate([b, np.zeros((b.shape[0], 1))], -1)
-        logR = (
-            self.posterior.dist(Sites.BETA1, ltla)
-            @ self.B[self.indices(self.B.shape, 0, time)].T
-        ) * self.tau
-        logR0 = (
-            logR
-            - (b[..., exclude].reshape(-1, 1) * p[..., exclude].squeeze()) * self.tau
+        log_R = self.get_log_R(ltla, time)
+
+        log_R0 = (
+            log_R.squeeze()
+            - (b[..., exclude].reshape(-1, 1, 1) * p[..., exclude]) * self.tau
         )
-        return np.exp(logR0)
+        return self.expand_dims(log_R0, 4, -1)
 
     def aggregate_lambda_lineage(self, region, time=None, lineage=None):
         agg = []

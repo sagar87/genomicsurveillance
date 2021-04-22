@@ -214,3 +214,39 @@ def test_get_transmissibility(
         assert model.get_transmissibility().shape == (100, 59)
         assert model.get_transmissibility(rebase=30).ndim == 2
         assert model.get_transmissibility(rebase=30).shape == (100, 59)
+
+
+def test_get_R(lineage_model, independent_clock_reset_model, clock_reset_model):
+
+    for model in [lineage_model, independent_clock_reset_model, clock_reset_model]:
+        assert model.get_log_R_lineage().ndim == 4
+        assert model.get_log_R_lineage().shape == (100, 4, 205, 59)
+        assert model.get_log_R_lineage(1).ndim == 4
+        assert model.get_log_R_lineage(1).shape == (100, 1, 205, 59)
+        assert model.get_log_R_lineage(1, np.arange(10)).ndim == 4
+        assert model.get_log_R_lineage(1, np.arange(10)).shape == (100, 1, 10, 59)
+        assert model.get_log_R_lineage(1, np.arange(10), np.arange(10)).ndim == 4
+        assert model.get_log_R_lineage(1, np.arange(10), np.arange(10)).shape == (
+            100,
+            1,
+            10,
+            10,
+        )
+        assert model.get_log_R_lineage(1, np.arange(10), 30).ndim == 4
+        assert model.get_log_R_lineage(1, np.arange(10), 30).shape == (100, 1, 10, 1)
+        assert model.get_log_R_lineage(None, np.arange(10), 30).ndim == 4
+        assert model.get_log_R_lineage(None, np.arange(10), 30).shape == (100, 4, 10, 1)
+
+        assert model.get_log_R().ndim == 4
+        assert model.get_log_R().shape == (100, 4, 205, 1)
+        assert model.get_log_R(1).ndim == 4
+        assert model.get_log_R(1).shape == (100, 1, 205, 1)
+        assert model.get_log_R(None, 1).ndim == 4
+        assert model.get_log_R(None, 1).shape == (100, 4, 1, 1)
+
+        assert model.get_log_R([1, 2], 1).ndim == 4
+        assert model.get_log_R([1, 2], 1).shape == (100, 2, 1, 1)
+        assert model.get_log_R([1, 2], 1).ndim == 4
+        assert model.get_log_R([1, 2], [1, 2]).shape == (100, 2, 2, 1)
+
+        assert model.get_other_log_R(6).ndim == 4
