@@ -31,7 +31,7 @@ def test_posterior(rootdir):
 
 
 @pytest.fixture
-def test_lineage_model(test_posterior):
+def lineage_model(test_posterior):
     m = Lineage(
         5.0,
         test_posterior["cases"],
@@ -45,7 +45,7 @@ def test_lineage_model(test_posterior):
 
 
 @pytest.fixture
-def test_clock_reset_model(test_posterior):
+def independent_clock_reset_model(test_posterior):
     m = MultiLineageClockReset(
         cases=test_posterior["cases"],
         lineages=test_posterior["lineages"],
@@ -53,5 +53,25 @@ def test_clock_reset_model(test_posterior):
         population=test_posterior["population"],
         basis=test_posterior["basis"],
         posterior=Posterior(test_posterior),
+        num_samples=100,
+        independent_clock=True,
+    )
+    return m
+
+
+@pytest.fixture
+def clock_reset_model(test_posterior):
+    test_posterior["t"] = test_posterior["t"][:, 1, :].reshape(100, 1, -1)
+    print(test_posterior["t"].shape)
+
+    m = MultiLineageClockReset(
+        cases=test_posterior["cases"],
+        lineages=test_posterior["lineages"],
+        lineage_dates=test_posterior["dates"],
+        population=test_posterior["population"],
+        basis=test_posterior["basis"],
+        posterior=Posterior(test_posterior),
+        num_samples=100,
+        independent_clock=False,
     )
     return m
