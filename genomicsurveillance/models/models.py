@@ -43,6 +43,12 @@ class Lineage(object):
         else:
             self.B = basis
 
+        self.num_ltla = self.cases.shape[0]
+        self.num_time = self.cases.shape[1]
+        self.num_lin = self.lineages.shape[-1] - 1
+        self.num_basis = self.B.shape[-1]
+        self.num_ltla_lin = self.nan_idx.shape[0]
+
     @property
     def nan_idx(self):
         if not hasattr(self, "_nan_idx"):
@@ -98,11 +104,13 @@ class Lineage(object):
             [array, func((array.shape[0], *[1 for _ in range(array.ndim - 1)]))], -1
         )
 
-    def get_logits(self, idx, time=Ellipsis):
+    def get_logits(self, ltla=None, time=None, lineage=None):
 
-        logits = self.posterior.dist(Sites.B1, idx) * np.arange(0, self.num_time)[
-            self._is_int(time)
-        ].reshape(1, -1, 1) + self.posterior.dist(Sites.C1, idx)
+        logits = self.posterior.dist(Sites.B1, ltla, None, lineage) * np.arange(
+            0, self.num_time
+        )[make_array(time)].reshape(1, -1, 1) + self.posterior.dist(
+            Sites.C1, ltla, None, lineage
+        )
         logits = self._expand_dims(logits)
         return logits
 
@@ -111,19 +119,30 @@ class Lineage(object):
         p = np.exp(logits - logsumexp(logits, -1, keepdims=True))
         return p
 
-    def get_lambda(self, idx, time=None):
-        beta = self.posterior.dist(Sites.BETA1, idx)
-        beta = self._expand_dims(beta, 3)
+    def get_lambda(self, ltla=None, time=None):
+        """
+        Returns the posterior distribution of the incidence.
 
-        lamb = self.population[idx].reshape(1, -1, 1) * np.exp(
-            np.einsum("ijk,kl->ijl", beta, self.B[self.indices(0, time)].T)
+        :param ltla: indices of the the LTLAs
+        :param time: time indices
+        :returns: the posterior distribution of the incidence
+            with shape (num_samples, num_ltla, num_time, 1)
+        """
+        beta = self.posterior.dist(Sites.BETA1, ltla)
+        beta = self._expand_dims(beta, 3)
+        basis = self._expand_dims(
+            self.B[self.indices(self.B.shape, 0, time)].T.squeeze(), 2
         )
+
+        lamb = self.population[self.indices(self.population.shape, ltla)].reshape(
+            1, -1, 1
+        ) * np.exp(np.einsum("ijk,kl->ijl", beta, basis))
         lamb = self._expand_dims(lamb, dim=-1)
         return lamb
 
-    def get_lambda_lineage(self, idx, time=None, lineage=None):
-        return self.get_lambda(idx, time=time) * self.get_probabilities(
-            idx, time=time, lineage=lineage
+    def get_lambda_lineage(self, ltla=None, time=None, lineage=None):
+        return self.get_lambda(ltla, time) * self.get_probabilities(
+            ltla, time=time, lineage=lineage
         )
 
     def get_average_log_R(self, idx, time=Ellipsis):
@@ -214,7 +233,7 @@ class MultiLineageClockReset(Model, Lineage):
     :param multinomial_scale: Weight of the multinomial log likelihood.
     :param time_scale: Parameter to scale the variance of mu_b.
     :param exclude: Exclude missing lineages during the analysis
-    :kwargs: SVI Handler arguments.
+    :param kwargs: SVI Handler arguments.
     """
 
     _latent_variables = [Sites.BETA1, Sites.BC0, Sites.B1, Sites.C1, Sites.T]
@@ -285,12 +304,6 @@ class MultiLineageClockReset(Model, Lineage):
 
         self.sample_deterministic = sample_deterministic
 
-        self.num_ltla = self.cases.shape[0]
-        self.num_time = self.cases.shape[1]
-        self.num_lin = self.lineages.shape[-1] - 1
-        self.num_basis = self.B.shape[-1]
-        self.num_ltla_lin = self.nan_idx.shape[0]
-
         self.offset = offset
         self.independent_clock = independent_clock
         self.time, self.intercept = self.clock()
@@ -355,6 +368,7 @@ class MultiLineageClockReset(Model, Lineage):
         for ltla in range(self.cases.shape[0]):
             larr = []
             garr = []
+            print(t0[ltla])
             for i, l in enumerate(t0[ltla]):
                 start_offset = self.lineage_dates[l] + self.offset
                 end_offset = -self.lineage_dates[l] + self.offset
@@ -413,14 +427,14 @@ class MultiLineageClockReset(Model, Lineage):
             self._arma = jnp.linalg.inv(Π0)
         return self._arma
 
-    def get_lambda(self, idx, time=Ellipsis):
-        beta = self._expand_dims(self.posterior.dist(Sites.BETA1, idx), 3)
+    # def get_lambda(self, idx, time=Ellipsis):
+    #     beta = self._expand_dims(self.posterior.dist(Sites.BETA1, idx), 3)
 
-        lamb = self.population[idx].reshape(1, -1, 1) * np.exp(
-            np.einsum("ijk,kl->ijl", beta, self.B[0][time].T) + self.beta_loc
-        )
-        lamb = self._expand_dims(lamb, dim=-1)
-        return lamb
+    #     lamb = self.population[idx].reshape(1, -1, 1) * np.exp(
+    #         np.einsum("ijk,kl->ijl", beta, self.B[0][time].T) + self.beta_loc
+    #     )
+    #     lamb = self._expand_dims(lamb, dim=-1)
+    #     return lamb
 
     def model(self):
         """The model."""

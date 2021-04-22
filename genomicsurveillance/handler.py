@@ -182,9 +182,9 @@ class SVIHandler(Handler):
         guide: Guide,
         loss: Trace_ELBO = Trace_ELBO(num_particles=1),
         optimizer: optim.optimizers.optimizer = optim.Adam,
-        lr: float = 0.01,
+        lr: float = 0.001,
         rng_key: int = 254,
-        num_epochs: int = 5000,
+        num_epochs: int = 30000,
         num_samples: int = 1000,
         log_func=_print_consumer,
         log_freq=1000,
@@ -334,7 +334,7 @@ class SVIModel(SVIHandler):
 class Model(SVIHandler, NutsHandler):
     _latent_variables = []
 
-    def __init__(self, handler, *args, **kwargs):
+    def __init__(self, handler="SVI", *args, **kwargs):
         self.handler = handler
         if handler == "SVI":
             SVIHandler.__init__(self, self.model, self.guide, *args, **kwargs)
