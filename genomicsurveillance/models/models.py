@@ -467,14 +467,17 @@ class MultiLineageClockReset(Model, Lineage):
             self._arma = jnp.linalg.inv(Π0)
         return self._arma
 
-    # def get_lambda(self, idx, time=Ellipsis):
-    #     beta = self.expand_dims(self.posterior.dist(Sites.BETA1, idx), 3)
+    def get_lambda(self, ltla=None, time=None):
+        beta = self.expand_dims(self.posterior.dist(Sites.BETA1, ltla), 3)
+        basis = self.expand_dims(
+            self.B[self.indices(self.B.shape, 0, time)].T.squeeze(), 2
+        )
 
-    #     lamb = self.population[idx].reshape(1, -1, 1) * np.exp(
-    #         np.einsum("ijk,kl->ijl", beta, self.B[0][time].T) + self.beta_loc
-    #     )
-    #     lamb = self.expand_dims(lamb, dim=-1)
-    #     return lamb
+        lamb = self.population[ltla].reshape(1, -1, 1) * np.exp(
+            np.einsum("ijk,kl->ijl", beta, basis) + self.beta_loc
+        )
+        lamb = self.expand_dims(lamb, dim=-1)
+        return lamb
 
     def model(self):
         """The model."""
