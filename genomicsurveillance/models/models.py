@@ -609,11 +609,12 @@ class MultiLineageClockReset(Model, Lineage):
 
         # with lineage_context:
         if self.alpha is not None:
-            conc = (
-                p[self.nan_idx]
-                * (self.lineages[self.nan_idx].sum(-1, keepdims=True) + 1.0)
-                / self.alpha
-            )
+            # conc = (
+            #     p[self.nan_idx]
+            #     * (self.lineages[self.nan_idx].sum(-1, keepdims=True) + 1.0)
+            #     / self.alpha
+            # )
+            conc = 1.0 + self.alpha * p[self.nan_idx]
             npy.sample(
                 Sites.LINEAGE,
                 dist.DirichletMultinomial(
