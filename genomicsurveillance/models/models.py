@@ -182,15 +182,11 @@ class Lineage(object):
         return ((log_R - (np.einsum("mijk,milk->mijl", p, b1))) + b1) * self.tau
 
     def get_other_log_R(self, exclude, ltla=None, time=None):
-        p = self.get_probabilities(ltla, time)
+        p = self.get_probabilities(ltla, time, exclude)
         b = self.posterior.dist(Sites.B0)
         b = np.concatenate([b, np.zeros((b.shape[0], 1))], -1)
         log_R = self.get_log_R(ltla, time)
-
-        log_R0 = (
-            log_R.squeeze()
-            - (b[..., exclude].reshape(-1, 1, 1) * p[..., exclude]) * self.tau
-        )
+        log_R0 = log_R - (b[..., exclude].reshape(-1, 1, 1, 1) * p) * self.tau
         return self.expand_dims(log_R0, 4, -1)
 
     def aggregate_lambda_lineage(self, region, time=None, lineage=None):
