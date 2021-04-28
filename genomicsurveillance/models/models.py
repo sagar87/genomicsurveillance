@@ -279,7 +279,8 @@ class MultiLineageClockReset(Model, Lineage):
         init_scale: float = 0.1,
         beta_loc: float = -10.0,
         beta_scale: float = 1.0,
-        alpha=None,
+        alpha0=0.01,
+        alpha1=100.0,
         b0_loc: float = 0.0,
         b0_scale: float = 0.2,
         c0_loc: float = 0.0,
@@ -314,7 +315,8 @@ class MultiLineageClockReset(Model, Lineage):
 
         self.beta_loc = beta_loc
         self.beta_scale = beta_scale
-        self.alpha = alpha
+        self.alpha0 = alpha0
+        self.alpha1 = alpha1
 
         self.b0_loc = b0_loc
         self.b0_scale = b0_scale
@@ -608,13 +610,13 @@ class MultiLineageClockReset(Model, Lineage):
         )
 
         # with lineage_context:
-        if self.alpha is not None:
+        if self.alpha0 is not None:
             # conc = (
             #     p[self.nan_idx]
             #     * (self.lineages[self.nan_idx].sum(-1, keepdims=True) + 1.0)
             #     / self.alpha
             # )
-            conc = 1.0 + self.alpha * p[self.nan_idx]
+            conc = self.alpha0 + self.alpha1 * p[self.nan_idx]
             npy.sample(
                 Sites.LINEAGE,
                 dist.DirichletMultinomial(
