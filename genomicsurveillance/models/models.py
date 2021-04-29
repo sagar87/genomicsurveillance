@@ -177,11 +177,19 @@ class Lineage(object):
         # TODO: set this up
         # b = self.posterior.dist(Sites.B0, lineage)
         # b1 = np.concatenate([b, np.zeros((b.shape[0], 1))], -1)
-        b1 = self.expand_dims(self.posterior.dist(Sites.B1, ltla, None, lineage), dim=2)
+        b1 = self.expand_dims(self.posterior.dist(Sites.B1, ltla), dim=2)
         log_R = self.get_log_R(ltla, time)
-        return (log_R - (np.einsum("mijk,milk->mijl", p, b1) * self.tau)) + (
+
+        log_R_lineage = (log_R - (np.einsum("mijk,milk->mijl", p, b1) * self.tau)) + (
             b1 * self.tau
         )
+
+        if lineage is not None:
+            idx = make_array(lineage)
+        else:
+            idx = slice(None)
+
+        return log_R_lineage[..., idx]
 
     def get_other_log_R(self, exclude, ltla=None, time=None):
         p = self.get_probabilities(ltla, time, exclude)
