@@ -166,12 +166,6 @@ class Lineage(object):
 
         return self.expand_dims(log_R, num_dim=4, dim=-1)
 
-    def get_average_log_R(self, idx, time=Ellipsis):
-        return (
-            self.posterior.dist(Sites.BETA1, idx)
-            @ self.B[self.indices(self.B.shape, 1, time)].T.squeeze()
-        ) * self.tau
-
     def get_log_R_lineage(self, ltla=None, time=None, lineage=None):
         p = self.get_probabilities(ltla, time)
         # TODO: set this up
@@ -197,6 +191,7 @@ class Lineage(object):
         b = np.concatenate([b, np.zeros((b.shape[0], 1))], -1)
         log_R = self.get_log_R(ltla, time)
         log_R0 = log_R - (b[..., exclude].reshape(-1, 1, 1, 1) * p) * self.tau
+
         return self.expand_dims(log_R0, 4, -1)
 
     def aggregate_lambda_lineage(self, region, time=None, lineage=None):
@@ -351,12 +346,12 @@ class MultiLineageClockReset(Model, Lineage):
     def get_logits(self, ltla=None, time=None, lineage=None):
 
         # this is a a bit complicatd
-        b = self.posterior.dist(Sites.B1, ltla, None, lineage)
-        c = self.posterior.dist(Sites.C1, ltla, None, lineage)
+        b = self.posterior.dist(Sites.B1, ltla, None)
+        c = self.posterior.dist(Sites.C1, ltla, None)
 
         # print(b.shape, c.shape)
         # regenerate the offset array
-        idx = self.indices(self.time.shape, ltla, None, lineage)
+        idx = self.indices(self.time.shape, ltla, None)
 
         # print(idx)
         t_expanded = np.stack([self.time[idx]] * self.num_samples, 0)
@@ -377,9 +372,9 @@ class MultiLineageClockReset(Model, Lineage):
                 copies = self.num_ltla
 
         if self.independent_clock:
-            t_idx = np.repeat(self.posterior.dist(Sites.T, ltla, lineage), copies, 1)
+            t_idx = np.repeat(self.posterior.dist(Sites.T, ltla), copies, 1)
         else:
-            t_idx = np.repeat(self.posterior.dist(Sites.T, None, lineage), copies, 1)
+            t_idx = np.repeat(self.posterior.dist(Sites.T, None), copies, 1)
 
         t_idx = t_idx.reshape(-1, t_idx.shape[-1])
         t_idx = (t_idx - self.offset) % t_expanded.shape[1]
@@ -404,7 +399,13 @@ class MultiLineageClockReset(Model, Lineage):
 
         idx = self.posterior.indices(t.shape, None, time)
 
-        return b * t[idx] + (c + g[idx])
+        if lineage is not None:
+            idx_lin = make_array(lineage)
+        else:
+            idx_lin = slice(None)
+
+        logits = b * t[idx] + (c + g[idx])
+        return logits[..., idx_lin]
 
     def clock(self, to_jax=True):
         t0 = (self.lineages > 0).argmax(1)  # - self.clock_shift
