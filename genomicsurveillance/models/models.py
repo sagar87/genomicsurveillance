@@ -115,9 +115,15 @@ class Lineage(object):
         return logits
 
     def get_probabilities(self, ltla=None, time=None, lineage=None):
-        logits = self.get_logits(ltla, time, lineage)
+        logits = self.get_logits(ltla, time)
         p = np.exp(logits - logsumexp(logits, -1, keepdims=True))
-        return p
+
+        if lineage is not None:
+            idx = make_array(lineage)
+        else:
+            idx = slice(None)
+
+        return p[..., idx]
 
     def get_lambda(self, ltla=None, time=None):
         """
@@ -346,12 +352,12 @@ class MultiLineageClockReset(Model, Lineage):
     def get_logits(self, ltla=None, time=None, lineage=None):
 
         # this is a a bit complicatd
-        b = self.posterior.dist(Sites.B1, ltla, None)
-        c = self.posterior.dist(Sites.C1, ltla, None)
+        b = self.posterior.dist(Sites.B1, ltla, None, lineage)
+        c = self.posterior.dist(Sites.C1, ltla, None, lineage)
 
         # print(b.shape, c.shape)
         # regenerate the offset array
-        idx = self.indices(self.time.shape, ltla, None)
+        idx = self.indices(self.time.shape, ltla, None, lineage)
 
         # print(idx)
         t_expanded = np.stack([self.time[idx]] * self.num_samples, 0)
@@ -372,9 +378,9 @@ class MultiLineageClockReset(Model, Lineage):
                 copies = self.num_ltla
 
         if self.independent_clock:
-            t_idx = np.repeat(self.posterior.dist(Sites.T, ltla), copies, 1)
+            t_idx = np.repeat(self.posterior.dist(Sites.T, ltla, lineage), copies, 1)
         else:
-            t_idx = np.repeat(self.posterior.dist(Sites.T, None), copies, 1)
+            t_idx = np.repeat(self.posterior.dist(Sites.T, None, lineage), copies, 1)
 
         t_idx = t_idx.reshape(-1, t_idx.shape[-1])
         t_idx = (t_idx - self.offset) % t_expanded.shape[1]
@@ -399,13 +405,7 @@ class MultiLineageClockReset(Model, Lineage):
 
         idx = self.posterior.indices(t.shape, None, time)
 
-        if lineage is not None:
-            idx_lin = make_array(lineage)
-        else:
-            idx_lin = slice(None)
-
-        logits = b * t[idx] + (c + g[idx])
-        return logits[..., idx_lin]
+        return b * t[idx] + (c + g[idx])
 
     def clock(self, to_jax=True):
         t0 = (self.lineages > 0).argmax(1)  # - self.clock_shift
