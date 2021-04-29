@@ -173,7 +173,7 @@ class Lineage(object):
         ) * self.tau
 
     def get_log_R_lineage(self, ltla=None, time=None, lineage=None):
-        p = self.get_probabilities(ltla, time, lineage)
+        p = self.get_probabilities(ltla, time)
         # TODO: set this up
         # b = self.posterior.dist(Sites.B0, lineage)
         # b1 = np.concatenate([b, np.zeros((b.shape[0], 1))], -1)
