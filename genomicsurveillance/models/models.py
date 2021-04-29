@@ -410,6 +410,7 @@ class MultiLineageClockReset(Model, Lineage):
     def clock(self, to_jax=True):
         t0 = (self.lineages > 0).argmax(1)  # - self.clock_shift
         t0[t0 < 0] = 0
+        lineage_present = self.lineages.sum(1) > 0
 
         t = []
         g = []
@@ -419,24 +420,28 @@ class MultiLineageClockReset(Model, Lineage):
             garr = []
 
             for i, l in enumerate(t0[ltla]):
-                start_offset = self.lineage_dates[l] + self.offset
-                end_offset = -self.lineage_dates[l] + self.offset
-                larr.append(
-                    np.concatenate(
-                        [
-                            np.repeat(0, start_offset),
-                            np.arange(0, self.num_time + end_offset),
-                        ]
+                if lineage_present[ltla, i]:
+                    start_offset = self.lineage_dates[l] + self.offset
+                    end_offset = -self.lineage_dates[l] + self.offset
+                    larr.append(
+                        np.concatenate(
+                            [
+                                np.repeat(0, start_offset),
+                                np.arange(0, self.num_time + end_offset),
+                            ]
+                        )
                     )
-                )
-                garr.append(
-                    np.concatenate(
-                        [
-                            np.repeat(-np.inf, start_offset),
-                            np.zeros(self.num_time + end_offset),
-                        ]
+                    garr.append(
+                        np.concatenate(
+                            [
+                                np.repeat(-1000, start_offset),
+                                np.zeros(self.num_time + end_offset),
+                            ]
+                        )
                     )
-                )
+                else:
+                    larr.append(np.ones(self.num_time + 2 * self.offset))
+                    garr.append(np.repeat(-1000, self.num_time + 2 * self.offset))
 
             t.append(np.stack(larr).T)
             g.append(np.stack(garr).T)
