@@ -340,7 +340,7 @@ class MultiLineageClockReset(Model, Lineage):
 
         self.time_scale = 100.0
         self.auto_correlation = auto_correlation
-
+        self.eps = -1e6
         self.sample_deterministic = sample_deterministic
 
         self.offset = offset
@@ -434,14 +434,14 @@ class MultiLineageClockReset(Model, Lineage):
                     garr.append(
                         np.concatenate(
                             [
-                                np.repeat(-1000, start_offset),
+                                np.repeat(self.eps, start_offset),
                                 np.zeros(self.num_time + end_offset),
                             ]
                         )
                     )
                 else:
-                    larr.append(np.ones(self.num_time + 2 * self.offset))
-                    garr.append(np.repeat(-1000, self.num_time + 2 * self.offset))
+                    larr.append(np.zeros(self.num_time + 2 * self.offset))
+                    garr.append(np.repeat(self.eps, self.num_time + 2 * self.offset))
 
             t.append(np.stack(larr).T)
             g.append(np.stack(garr).T)

@@ -250,3 +250,43 @@ def test_get_R(lineage_model, independent_clock_reset_model, clock_reset_model):
         assert model.get_log_R([1, 2], [1, 2]).shape == (100, 2, 2, 1)
 
         assert model.get_other_log_R(6).ndim == 4
+
+
+def test_clock(clock_reset_model):
+    assert clock_reset_model.offset == 21
+    assert (
+        clock_reset_model.time.shape[1]
+        == clock_reset_model.num_time + 2 * clock_reset_model.offset
+    )
+
+    t = clock_reset_model.posterior.dist("t")
+    tt = clock_reset_model.time[0][
+        clock_reset_model.offset : -clock_reset_model.offset
+    ][..., 1]
+    ii = clock_reset_model.intercept[0][
+        clock_reset_model.offset : -clock_reset_model.offset
+    ][..., 1]
+    shift = t[0, 0, 1]
+    st, si = clock_reset_model.shift_clock(t[0])
+    assert (st[0][..., 1] > 0).sum() - (tt > 0).sum() == -(
+        shift - clock_reset_model.offset
+    )
+    assert (si[0][..., 1] >= 0).sum() - (ii >= 0).sum() == -(
+        shift - clock_reset_model.offset
+    )
+
+    tt = clock_reset_model.time[2][
+        clock_reset_model.offset : -clock_reset_model.offset
+    ][..., -2]
+    ii = clock_reset_model.intercept[2][
+        clock_reset_model.offset : -clock_reset_model.offset
+    ][..., -2]
+    shift = t[2, 0, -2]
+    st, si = clock_reset_model.shift_clock(t[2])
+
+    assert (st[2][..., -2] > 0).sum() - (tt > 0).sum() == -(
+        shift - clock_reset_model.offset
+    )
+    assert (si[2][..., -2] >= 0).sum() - (ii >= 0).sum() == -(
+        shift - clock_reset_model.offset
+    )
