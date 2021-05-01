@@ -201,23 +201,37 @@ class Lineage(object):
         return self.expand_dims(log_R0, 4, -1)
 
     def aggregate_lambda_lineage(self, region, time=None, lineage=None):
+        """
+        Aggregates lambda lineage by an indicator array.
+
+        :param region: an indicator array, e.g. np.array([0, 0, 0, 1, 1])
+        :param time: index array containing indices of time
+        :param lineage: index array containing indices of lineage of interest
+        :return: a numpy array containing aggregated incidence due to each lineage
+        """
         agg = []
         for i in np.sort(np.unique(region)):
             region_idx = np.where(region == i)[0]
             region_not_nan = np.isin(region_idx, self.nan_idx)
-            agg.append(
-                self.get_lambda_lineage(region_idx[region_not_nan], time, lineage).sum(
-                    1
-                )
-            )
+            region_idx = region_idx[region_not_nan]
+            agg_region = self.get_lambda_lineage(int(region_idx[0]), time, lineage)
 
-        return np.stack(agg, 1)
+            for r in region_idx[1:]:
+                agg_region += self.get_lambda_lineage(int(r), time, lineage)
+            agg.append(agg_region)
+
+        return np.concatenate(agg, 1)
+
+    def aggregate_probabilities(self, region, time=None, lineage=None):
+        lambda_lin = self.aggregate_lambda_lineage(region, time=time, lineage=lineage)
+        return lambda_lin / lambda_lin.sum(-1, keepdims=True)
 
     def aggregate_R(self, region, time=Ellipsis):
         lambda_regions = self.aggregate_lambda_lineage(region, time=time)
 
         agg = []
         for i in np.sort(np.unique(region)):
+
             region_idx = np.where(region == i)[0]
             region_not_nan = np.isin(region_idx, self.nan_idx)
             agg.append(

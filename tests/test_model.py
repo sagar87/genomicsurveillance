@@ -13,6 +13,30 @@ def test_posterior_fixture(test_posterior):
 #     pass
 
 
+def test_aggregate_lambda(clock_reset_model):
+    cluster = np.array([0, 0, 1, 1])
+    aggregated_lambda = clock_reset_model.aggregate_lambda_lineage(cluster)
+    assert aggregated_lambda.shape == (100, 2, 205, 59)
+    cluster = np.array([0, 0, 0, 0])
+    aggregated_lambda = clock_reset_model.aggregate_lambda_lineage(cluster)
+    assert aggregated_lambda.shape == (100, 1, 205, 59)
+    cluster = np.array([0, 0, 1, 2])
+    aggregated_lambda = clock_reset_model.aggregate_lambda_lineage(cluster)
+    assert aggregated_lambda.shape == (100, 3, 205, 59)
+
+
+def test_aggregate_probabilities(clock_reset_model):
+    cluster = np.array([0, 0, 1, 1])
+    aggregated_lambda = clock_reset_model.aggregate_probabilities(cluster)
+    assert aggregated_lambda.shape == (100, 2, 205, 59)
+    cluster = np.array([0, 0, 0, 0])
+    aggregated_lambda = clock_reset_model.aggregate_probabilities(cluster)
+    assert aggregated_lambda.shape == (100, 1, 205, 59)
+    cluster = np.array([0, 0, 1, 2])
+    aggregated_lambda = clock_reset_model.aggregate_probabilities(cluster)
+    assert aggregated_lambda.shape == (100, 3, 205, 59)
+
+
 def test_get_lambda_interface(
     lineage_model, independent_clock_reset_model, clock_reset_model
 ):
