@@ -3,6 +3,7 @@ import os
 import pickle
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from genomicsurveillance.handler import Posterior
@@ -75,3 +76,12 @@ def clock_reset_model(test_posterior):
         independent_clock=False,
     )
     return m
+
+
+@pytest.fixture
+def ltla_dfs(rootdir):
+
+    df1 = pd.read_csv(os.path.join(rootdir, "test_files/E06000024.csv"), index_col=0)
+    df2 = pd.read_csv(os.path.join(rootdir, "test_files/E06000022.csv"), index_col=0)
+    df3 = pd.read_csv(os.path.join(rootdir, "test_files/E06000021.csv"), index_col=0)
+    return [df1, df2, df3]

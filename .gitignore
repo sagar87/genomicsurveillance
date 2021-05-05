@@ -6,3 +6,4 @@ notebooks/*.txt
 notebooks/*.pkl
 notebooks/sandbox.ipynb
 notebooks/.ipynb_checkpoints
+lint_code.sh
