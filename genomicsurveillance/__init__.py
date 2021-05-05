@@ -5,7 +5,7 @@ GenomicSurveillance
 Models to estimate the incidence of virus variants.
 """
 
-from .data import get_meta_data
+from .data import get_england, get_meta_data, get_specimen
 from .models import (
     MultiLineage,
     MultiLineageArma,
@@ -26,6 +26,8 @@ from .utils import (
 
 __all__ = [
     "get_meta_data",
+    "get_england",
+    "get_specimen",
     "create_spline_basis",
     "create_date_list",
     "merge_lineages",
