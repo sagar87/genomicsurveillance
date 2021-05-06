@@ -1,13 +1,8 @@
 import numpy as np
 import pandas as pd
-import scipy.stats as stats
 from scipy.interpolate import BSpline
 
 from .epiestim import epiestim_discretise_serial_interval
-
-
-def discretise_serial_interval(k, mu: float = 6.3, sigma: float = 4.2):
-    return stats.gamma.pdf(k, mu ** 2 / sigma ** 2, sigma ** 2 / mu)
 
 
 def create_date_list(
@@ -162,3 +157,4 @@ class KnotList(object):
         b = np.where(B_conv.sum(0) == 0)[0]
         self.B_conv = np.delete(B_conv, b, axis=1)
         self.B_diff = np.delete(self.B_diff, b, axis=1)
+        self.basis = np.stack([self.B_conv, self.B_diff])

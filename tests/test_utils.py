@@ -3,7 +3,6 @@ import pytest
 
 from genomicsurveillance.utils import create_spline_basis, sort_lineages
 from genomicsurveillance.utils.epiestim import epiestim_discretise_serial_interval
-from genomicsurveillance.utils.knots import discretise_serial_interval
 from genomicsurveillance.utils.lineages import alias_lineages
 
 
@@ -139,8 +138,5 @@ def test_sort_lineages_assertions():
 
 
 def test_discretise():
-    d1 = [discretise_serial_interval(i) for i in range(25)]
     d2 = [epiestim_discretise_serial_interval(i, mu=6.2, cv=0.62) for i in range(25)]
-
-    assert len(d1) == 25
     assert len(d2) == 25
