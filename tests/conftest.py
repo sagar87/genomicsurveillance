@@ -85,3 +85,39 @@ def ltla_dfs(rootdir):
     df2 = pd.read_csv(os.path.join(rootdir, "test_files/E06000022.csv"), index_col=0)
     df3 = pd.read_csv(os.path.join(rootdir, "test_files/E06000021.csv"), index_col=0)
     return [df1, df2, df3]
+
+
+@pytest.fixture
+def lineage_list():
+    return [
+        "B.1.177",
+        "B.1.258",
+        "B.1.258.3",
+        "B.1.36.17",
+        "B.1.1",
+        "B",
+        "B.1.1.305",
+        "B.1.1.277",
+        "B.1.235",
+        "B.1.1.141",
+        "B.1.36.16",
+        "B.1.505",
+        "B.1.1.25",
+        "B.1.1.235",
+        "B.1.2",
+        "B.1.1.255",
+        "B.1.1.51",
+        "B.1.149",
+        "B.1.1.286",
+        "B.1.1.189",
+        "B.1.1.288",
+        "B.1.1.54",
+        "B.1.36",
+        "B.1.1.227",
+        "A.18",
+        "B.1.1.39",
+        "A.25",
+        "B.1.1.50",
+        "B.1.416.1",
+        "Other",
+    ]

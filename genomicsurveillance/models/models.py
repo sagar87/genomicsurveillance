@@ -7,9 +7,20 @@ from jax.scipy.special import logsumexp
 
 from genomicsurveillance.distributions import NegativeBinomial
 from genomicsurveillance.handler import Model, make_array
-from genomicsurveillance.utils import create_spline_basis, is_nan_row
+from genomicsurveillance.utils import create_spline_basis
 
 from .sites import Sites
+
+
+def is_nan_row(array: np.ndarray) -> np.ndarray:
+    """
+    Helper function to extract the indices of rows (1st dimension) in an array that
+    contains nan values
+
+    :param array: a numpy array
+    :returns: an array of indices
+    """
+    return np.where(np.isnan(array.sum(axis=tuple(range(1, array.ndim)))))[0]
 
 
 class Lineage(object):
