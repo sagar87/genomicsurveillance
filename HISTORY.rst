@@ -2,6 +2,13 @@
 History
 *******
 
+0.4.0 (2021-05-08)
+==================
+
+* Included ClockReset model enabling timely variant introductions and inference via DirichletMultinomial.
+* Various bug fixes.
+* Fully refactored utils module.
+* Inclusion of any tests.
 
 0.3.0 (2021-03-26)
 ==================
