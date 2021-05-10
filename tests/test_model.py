@@ -13,7 +13,19 @@ def test_posterior_fixture(test_posterior):
 #     pass
 
 
-def test_aggregate_lambda(clock_reset_model):
+def test_aggregate_log_R(clock_reset_model):
+    cluster = np.array([0, 0, 1, 1])
+    aggregated_lambda = clock_reset_model.aggregate_log_R(cluster)
+    assert aggregated_lambda.shape == (100, 2, 205, 1)
+    cluster = np.array([0, 0, 0, 0])
+    aggregated_lambda = clock_reset_model.aggregate_log_R(cluster)
+    assert aggregated_lambda.shape == (100, 1, 205, 1)
+    cluster = np.array([0, 0, 1, 2])
+    aggregated_lambda = clock_reset_model.aggregate_log_R(cluster)
+    assert aggregated_lambda.shape == (100, 3, 205, 1)
+
+
+def test_aggregate_lambda_lineage(clock_reset_model):
     cluster = np.array([0, 0, 1, 1])
     aggregated_lambda = clock_reset_model.aggregate_lambda_lineage(cluster)
     assert aggregated_lambda.shape == (100, 2, 205, 59)
@@ -23,6 +35,18 @@ def test_aggregate_lambda(clock_reset_model):
     cluster = np.array([0, 0, 1, 2])
     aggregated_lambda = clock_reset_model.aggregate_lambda_lineage(cluster)
     assert aggregated_lambda.shape == (100, 3, 205, 59)
+
+
+def test_aggregate_lambda(clock_reset_model):
+    cluster = np.array([0, 0, 1, 1])
+    aggregated_lambda = clock_reset_model.aggregate_lambda(cluster)
+    assert aggregated_lambda.shape == (100, 2, 205, 1)
+    cluster = np.array([0, 0, 0, 0])
+    aggregated_lambda = clock_reset_model.aggregate_lambda(cluster)
+    assert aggregated_lambda.shape == (100, 1, 205, 1)
+    cluster = np.array([0, 0, 1, 2])
+    aggregated_lambda = clock_reset_model.aggregate_lambda(cluster)
+    assert aggregated_lambda.shape == (100, 3, 205, 1)
 
 
 def test_aggregate_probabilities(clock_reset_model):

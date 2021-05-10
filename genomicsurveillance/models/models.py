@@ -102,6 +102,21 @@ class Lineage(object):
             [array, func((array.shape[0], *[1 for _ in range(array.ndim - 1)]))], -1
         )
 
+    def aggregate(self, region, func, *args, **kwargs):
+        agg = []
+        for i in np.sort(np.unique(region)):
+            region_idx = np.where(region == i)[0]
+            region_not_nan = np.isin(region_idx, self.nan_idx)
+            region_idx = region_idx[region_not_nan]
+            aggregate = func(int(region_idx[0]), *args, **kwargs)
+
+            for r in region_idx[1:]:
+                aggregate += func(int(r), *args, **kwargs)
+
+            agg.append(aggregate)
+
+        return np.concatenate(agg, 1)
+
     def indices(self, shape, *args):
         """
         Creates indices for easier access to variables.
@@ -183,6 +198,31 @@ class Lineage(object):
 
         return self.expand_dims(log_R, num_dim=4, dim=-1)
 
+    # def aggregate_average_R(self, region, time=Ellipsis):
+    #     lambda_regions = self.aggregate_lambda_lineage(region, time=time)
+
+    #     agg = []
+    #     for i in np.sort(np.unique(region)):
+    #         region_idx = np.where(region == i)[0]
+    #         region_not_nan = np.isin(region_idx, self.nan_idx)
+    #         agg.append(
+    #             (
+    #                 self.get_average_log_R(region_idx[region_not_nan], time=time)
+    #                 * self.get_lambda(region_idx[region_not_nan], time=time).squeeze()
+    #             ).sum(1)
+    #         )
+
+    #     return np.exp(np.stack(agg, 1) / lambda_regions.sum(-1))
+
+    def aggregate_log_R(self, region, time=None):
+        lambda_regions = self.aggregate_lambda(region, time)
+
+        def weighted_log_R(ltla, time):
+            return self.get_log_R(ltla, time) * self.get_lambda(ltla, time)
+
+        agg = self.aggregate(region, weighted_log_R, time)
+        return agg / lambda_regions
+
     def get_log_R_lineage(self, ltla=None, time=None, lineage=None):
         p = self.get_probabilities(ltla, time)
         # TODO: set this up
@@ -211,6 +251,9 @@ class Lineage(object):
 
         return self.expand_dims(log_R0, 4, -1)
 
+    def aggregate_lambda(self, region, time=None):
+        return self.aggregate(region, self.get_lambda, time)
+
     def aggregate_lambda_lineage(self, region, time=None, lineage=None):
         """
         Aggregates lambda lineage by an indicator array.
@@ -220,18 +263,19 @@ class Lineage(object):
         :param lineage: index array containing indices of lineage of interest
         :return: a numpy array containing aggregated incidence due to each lineage
         """
-        agg = []
-        for i in np.sort(np.unique(region)):
-            region_idx = np.where(region == i)[0]
-            region_not_nan = np.isin(region_idx, self.nan_idx)
-            region_idx = region_idx[region_not_nan]
-            agg_region = self.get_lambda_lineage(int(region_idx[0]), time, lineage)
+        # agg = []
+        # for i in np.sort(np.unique(region)):
+        #     region_idx = np.where(region == i)[0]
+        #     region_not_nan = np.isin(region_idx, self.nan_idx)
+        #     region_idx = region_idx[region_not_nan]
+        #     agg_region = self.get_lambda_lineage(int(region_idx[0]), time, lineage)
 
-            for r in region_idx[1:]:
-                agg_region += self.get_lambda_lineage(int(r), time, lineage)
-            agg.append(agg_region)
+        #     for r in region_idx[1:]:
+        #         agg_region += self.get_lambda_lineage(int(r), time, lineage)
+        #     agg.append(agg_region)
 
-        return np.concatenate(agg, 1)
+        # return np.concatenate(agg, 1)
+        return self.aggregate(region, self.get_lambda_lineage, time, lineage)
 
     def aggregate_probabilities(self, region, time=None, lineage=None):
         lambda_lin = self.aggregate_lambda_lineage(region, time=time, lineage=lineage)
@@ -253,22 +297,6 @@ class Lineage(object):
             )
 
         return np.exp(np.stack(agg, 1) / lambda_regions)
-
-    def aggregate_average_R(self, region, time=Ellipsis):
-        lambda_regions = self.aggregate_lambda_lineage(region, time=time)
-
-        agg = []
-        for i in np.sort(np.unique(region)):
-            region_idx = np.where(region == i)[0]
-            region_not_nan = np.isin(region_idx, self.nan_idx)
-            agg.append(
-                (
-                    self.get_average_log_R(region_idx[region_not_nan], time=time)
-                    * self.get_lambda(region_idx[region_not_nan], time=time).squeeze()
-                ).sum(1)
-            )
-
-        return np.exp(np.stack(agg, 1) / lambda_regions.sum(-1))
 
 
 class MultiLineageClockReset(Model, Lineage):
