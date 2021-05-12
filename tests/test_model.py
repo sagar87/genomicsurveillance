@@ -90,6 +90,32 @@ def test_get_lambda_interface(
         assert model.get_lambda(1, np.arange(10)).shape == (100, 1, 10, 1)
 
 
+def test_growthrate_interface(clock_reset_model):
+    model = clock_reset_model
+    assert model.get_growth_rate().ndim == 4
+    assert model.get_growth_rate().shape == (100, 4, 205, 1)
+
+    # latla
+    assert model.get_growth_rate(1).ndim == 4
+    assert model.get_growth_rate(1).shape == (100, 1, 205, 1)
+    assert model.get_growth_rate([1, 2]).shape == (100, 2, 205, 1)
+    assert model.get_growth_rate(np.array([1, 2])).shape == (100, 2, 205, 1)
+
+    # time
+    assert model.get_growth_rate(None, np.arange(10)).ndim == 4
+    assert model.get_growth_rate(None, np.arange(10)).shape == (100, 4, 10, 1)
+    assert model.get_growth_rate(None, 1).ndim == 4
+    assert model.get_growth_rate(None, 1).shape == (100, 4, 1, 1)
+    assert model.get_growth_rate(None, [1, 2]).ndim == 4
+    assert model.get_growth_rate(None, [1, 2]).shape == (100, 4, 2, 1)
+
+    # both at the same time
+    assert model.get_growth_rate(np.arange(2), np.arange(10)).ndim == 4
+    assert model.get_growth_rate(np.arange(2), np.arange(10)).shape == (100, 2, 10, 1)
+    assert model.get_growth_rate(1, np.arange(10)).ndim == 4
+    assert model.get_growth_rate(1, np.arange(10)).shape == (100, 1, 10, 1)
+
+
 def test_get_logits_interface(
     lineage_model, independent_clock_reset_model, clock_reset_model
 ):
