@@ -1,4 +1,4 @@
-from .epiestim import epiestim_discretise_serial_interval, infection_to_test, epiestim_R
+from .epiestim import epiestim_discretise_serial_interval, epiestim_R, infection_to_test
 from .knots import KnotList, create_date_list, create_spline_basis
 from .lineages import preprocess_lineage_tensor, sort_lineages
 
@@ -10,5 +10,5 @@ __all__ = [
     "KnotList",
     "sort_lineages",
     "preprocess_lineage_tensor",
-    "infection_to_test"
+    "infection_to_test",
 ]

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import BSpline
 
-from .epiestim import epiestim_discretise_serial_interval
+from .epiestim import infection_to_test
 
 
 def create_date_list(
