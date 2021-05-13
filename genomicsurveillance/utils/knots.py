@@ -66,7 +66,7 @@ class KnotList(object):
         starting_day: str = "Wednesday",
         periods: int = 7,
         padding: int = 20,
-        dist: Callable = epiestim_discretise_serial_interval,
+        dist: Callable = infection_to_test,
         dist_kwargs: dict = {},
         degree: int = 3,
         offset: int = 0,
