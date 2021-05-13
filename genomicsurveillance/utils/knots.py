@@ -1,3 +1,5 @@
+from typing import Callable
+
 import numpy as np
 import pandas as pd
 from scipy.interpolate import BSpline
@@ -64,9 +66,8 @@ class KnotList(object):
         starting_day: str = "Wednesday",
         periods: int = 7,
         padding: int = 20,
-        mu: float = 6.3,
-        sigma: float = 4.2,
-        cv: float = 0.62,
+        dist: Callable = epiestim_discretise_serial_interval,
+        dist_kwargs: dict = {"mu": 6.3, "cv": 0.62},
         degree: int = 3,
         offset: int = 0,
     ):
@@ -112,12 +113,7 @@ class KnotList(object):
         self.t = np.arange(-self.padding, self.date_range.shape[0] + self.padding)
 
         # serial interval distribution
-        self.p = np.array(
-            [
-                epiestim_discretise_serial_interval(i, mu=mu, cv=cv)
-                for i in range(self.padding)
-            ]
-        )
+        self.p = np.array([dist(i, **dist_kwargs) for i in range(self.padding)])
         self.p /= self.p.sum()
 
         self.get_spline_basis()

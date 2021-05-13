@@ -103,3 +103,12 @@ def epiestim_discretise_serial_interval(
     res = res + a * b * (2 * cdf_gamma2(k - 1) - cdf_gamma2(k - 2) - cdf_gamma2(k))
 
     return max(res, 0)
+
+
+def infection_to_test(k: int, mu=1.92, sigma=0.65):
+    """
+    Infection to postive test result. Derived from the incubation time distribution in
+    Bi et. al. (2020).
+    """
+    test_dist = stats.lognorm(s=sigma, loc=0, scale=np.exp(mu))
+    return np.diff([test_dist.cdf(i) for i in range(k + 2)])[k]
