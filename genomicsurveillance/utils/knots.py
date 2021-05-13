@@ -67,7 +67,7 @@ class KnotList(object):
         periods: int = 7,
         padding: int = 20,
         dist: Callable = epiestim_discretise_serial_interval,
-        dist_kwargs: dict = {"mu": 6.3, "cv": 0.62},
+        dist_kwargs: dict = {},
         degree: int = 3,
         offset: int = 0,
     ):

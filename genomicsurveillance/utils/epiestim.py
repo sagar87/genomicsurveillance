@@ -72,10 +72,11 @@ def epiestim_R(
 
 
 def epiestim_discretise_serial_interval(
-    k: int, mu: float, sigma: Optional[float] = None, cv: Optional[float] = None
+    k: int, mu: float = 6.3, sigma: Optional[float] = None, cv: Optional[float] = 0.62
 ):
     """
     Discretises a gamma distribution according to Cori et al. 2013.
+
 
     :param k: Day of the serial interval (k >= 0).
     :param mu: Mean of the serial interval distribution.
