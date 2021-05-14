@@ -1,5 +1,5 @@
 from .epiestim import epiestim_discretise_serial_interval, epiestim_R, infection_to_test
-from .knots import KnotList, create_date_list, create_spline_basis
+from .knots import KnotList, Knots, create_date_list, create_spline_basis
 from .lineages import preprocess_lineage_tensor, sort_lineages
 
 __all__ = [
@@ -7,6 +7,7 @@ __all__ = [
     "epiestim_discretise_serial_interval",
     "create_date_list",
     "create_spline_basis",
+    "Knots",
     "KnotList",
     "sort_lineages",
     "preprocess_lineage_tensor",

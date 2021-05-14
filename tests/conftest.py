@@ -7,7 +7,8 @@ import pandas as pd
 import pytest
 
 from genomicsurveillance.handler import Posterior
-from genomicsurveillance.models.models import Lineage, MultiLineageClockReset
+from genomicsurveillance.models import MultiLineage
+from genomicsurveillance.models.base import Lineage
 
 
 @pytest.fixture(scope="module")
@@ -34,27 +35,27 @@ def test_posterior(rootdir):
 @pytest.fixture
 def lineage_model(test_posterior):
     m = Lineage(
-        5.0,
-        test_posterior["cases"],
-        test_posterior["lineages"],
-        test_posterior["dates"],
-        test_posterior["population"],
-        test_posterior["basis"],
-        Posterior(test_posterior),
-    )
-    return m
-
-
-@pytest.fixture
-def independent_clock_reset_model(test_posterior):
-    m = MultiLineageClockReset(
+        tau=5.0,
         cases=test_posterior["cases"],
         lineages=test_posterior["lineages"],
         lineage_dates=test_posterior["dates"],
         population=test_posterior["population"],
         basis=test_posterior["basis"],
         posterior=Posterior(test_posterior),
-        num_samples=100,
+    )
+    return m
+
+
+@pytest.fixture
+def independent_clock_reset_model(test_posterior):
+    m = MultiLineage(
+        cases=test_posterior["cases"],
+        lineages=test_posterior["lineages"],
+        lineage_dates=test_posterior["dates"],
+        population=test_posterior["population"],
+        basis=test_posterior["basis"],
+        posterior=Posterior(test_posterior),
+        model_kwargs=dict(num_samples=100),
         independent_clock=True,
     )
     return m
@@ -65,14 +66,14 @@ def clock_reset_model(test_posterior):
     test_posterior["t"] = test_posterior["t"][:, 1, :].reshape(100, 1, -1)
     print(test_posterior["t"].shape)
 
-    m = MultiLineageClockReset(
+    m = MultiLineage(
         cases=test_posterior["cases"],
         lineages=test_posterior["lineages"],
         lineage_dates=test_posterior["dates"],
         population=test_posterior["population"],
         basis=test_posterior["basis"],
         posterior=Posterior(test_posterior),
-        num_samples=100,
+        model_kwargs=dict(num_samples=100),
         independent_clock=False,
     )
     return m

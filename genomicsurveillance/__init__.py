@@ -6,12 +6,7 @@ Models to estimate the incidence of virus variants.
 """
 
 from .data import get_england, get_meta_data, get_specimen
-from .models import (
-    MultiLineage,
-    MultiLineageArma,
-    MultiLineageClockReset,
-    SimpleMultiLineage,
-)
+from .models import MultiLineage
 from .utils import (
     KnotList,
     create_date_list,
@@ -31,8 +26,5 @@ __all__ = [
     "epiestim_R",
     "epiestim_discretise_serial_interval",
     "MultiLineage",
-    "SimpleMultiLineage",
-    "MultiLineageArma",
-    "MultiLineageClockReset",
     "KnotList",
 ]
