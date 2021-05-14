@@ -39,7 +39,7 @@ class Lineage(object):
         self.auto_correlation = auto_correlation
 
         if basis is None:
-            knots = Knots(cases.shape[1])
+            knots = Knots(cases.shape[1], periods=14)
             self.B = knots.basis
             # _, self.B = create_spline_basis(
             #     np.arange(cases.shape[1]),

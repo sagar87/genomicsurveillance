@@ -5,6 +5,11 @@ import pandas as pd
 from genomicsurveillance.config import Files
 
 
+def get_aliases(aliases: bytes = Files.ALIASES):
+    aliases = pd.read_csv(io.BytesIO(aliases))
+    return dict(zip(aliases.alias.tolist(), aliases.lineage.tolist()))
+
+
 def get_meta_data(meta_data: bytes = Files.META_DATA):
     """
     Load the UK meta data.

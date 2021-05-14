@@ -5,7 +5,7 @@ GenomicSurveillance
 Models to estimate the incidence of virus variants.
 """
 
-from .data import get_england, get_meta_data, get_specimen
+from .data import get_aliases, get_england, get_meta_data, get_specimen
 from .models import MultiLineage
 from .utils import (
     KnotList,
@@ -20,6 +20,7 @@ __all__ = [
     "get_meta_data",
     "get_england",
     "get_specimen",
+    "get_aliases",
     "create_spline_basis",
     "create_date_list",
     "preprocess_lineage_tensor",
