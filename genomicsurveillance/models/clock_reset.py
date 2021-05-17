@@ -97,7 +97,7 @@ class MultiLineageClockReset(Model, Lineage):
         self.beta_loc = beta_loc
         self.beta_scale = beta_scale
         self.alpha0 = alpha0
-        self.alpha1 = alpha1
+        self.alpha1 = self._check_alpha1(alpha1)
 
         self.b0_loc = b0_loc
         self.b0_scale = b0_scale
@@ -116,6 +116,15 @@ class MultiLineageClockReset(Model, Lineage):
         self.independent_clock = independent_clock
         self.time, self.intercept = self.clock()
         self.u, self.v0, self.w = np.ogrid[tuple(map(slice, self.time.shape))]
+
+    def _check_alpha1(self, alpha1):
+        if type(alpha1) == int or type(alpha1) == float:
+            return alpha1
+        elif type(alpha1) == np.ndarray:
+            assert (
+                alpha1.shape[0] == self.num_ltla
+            ), "If alpha1 is an array, alpha1.shape[0] must match cases.shape[0]."
+            return alpha1[self.nan_idx]
 
     def get_logits(self, ltla=None, time=None, lineage=None):
 
