@@ -14,6 +14,7 @@ from .utils import (
     epiestim_discretise_serial_interval,
     epiestim_R,
     preprocess_lineage_tensor,
+    sort_lineages,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "epiestim_discretise_serial_interval",
     "MultiLineage",
     "KnotList",
+    "sort_lineages",
 ]
