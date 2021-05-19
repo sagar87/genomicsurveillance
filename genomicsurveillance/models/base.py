@@ -3,7 +3,7 @@ import numpy as np
 from jax.ops import index, index_update
 from jax.scipy.special import logsumexp
 
-from genomicsurveillance.handler import make_array
+from genomicsurveillance.handler import make_array, Posterior
 from genomicsurveillance.utils import Knots
 
 from .sites import Sites
@@ -35,7 +35,7 @@ class Lineage(object):
         self.lineages = lineages
         self.lineage_dates = lineage_dates
         self.population = population
-        self.posterior = posterior
+        self.posterior = Posterior(posterior)
         self.auto_correlation = auto_correlation
 
         if basis is None:
