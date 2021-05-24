@@ -2,6 +2,13 @@
 History
 *******
 
+
+0.4.1 (2021-05-24)
+==================
+
+* Various bugfixes.
+* Updates for new Preprint/Covince release.
+
 0.4.0 (2021-05-08)
 ==================
 

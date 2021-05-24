@@ -93,18 +93,21 @@ def plot_lad(
     ax[1].set_ylim(bottom=0, top=1)
 
     R = np.exp(model.get_log_R_lineage(lad))
-    print(R.shape)
-    #     logR = (model.posterior.dist(Sites.BETA1, lad) @ model.B[1].T) * model.tau
     R0 = np.exp(model.get_log_R(lad)).squeeze()
 
-    plot_median_and_ci(R0, colors="C0", x=date_range, ax=ax[2], label="Avg. R")
+    plot_median_and_ci(
+        R0[:, :-7], colors="C0", x=date_range[:-7], ax=ax[2], label="Avg. R"
+    )
     for i, l in enumerate(lin):
         j = lin_date_idx[(lineage_tensor[lad, ..., l] > 0).argmax()]
-        # print(R.shape, date_range.shape)
         plot_median_and_ci(
-            R[..., l][..., j:], colors=colors[i], x=date_range[j:], ax=ax[2], alpha=0.05
+            R[..., l][..., j:-7],
+            colors=colors[i],
+            x=date_range[j:-7],
+            ax=ax[2],
+            alpha=0.05,
         )
-    #         plot_median_and_ci(R[..., l], colors=colors[i], x=date_range, ax=ax[2], alpha=.05)
+
     ax[2].set_ylim([0.5, 3])
     ax[2].axhline(1, color="k")
     ax[2].margins(x=0.001)
@@ -122,20 +125,6 @@ def plot_lad(
     )
     ax[2].grid(True)
     ax[2].set_ylabel("R")
-    ax[2].text(
-        pd.to_datetime("2020-11-05"),
-        ax[2].get_ylim()[1] * 0.98,
-        "2nd national\nlockdown",
-        ha="left",
-        va="top",
-    )
-    ax[2].text(
-        pd.to_datetime("2021-01-06"),
-        ax[2].get_ylim()[1] * 0.98,
-        "3rd national\nlockdown",
-        ha="left",
-        va="top",
-    )
     ax[2].set_xlabel("Date")
     ax[2].legend()
 
