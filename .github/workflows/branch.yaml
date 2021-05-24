@@ -52,5 +52,5 @@ jobs:
         run: poetry run flake8 .
       - name: Run bandit
         run: poetry run bandit .
-      - name: Run saftey
-        run: poetry run safety check
+      # - name: Run saftey
+        # run: poetry run safety check

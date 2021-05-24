@@ -1,3 +1,5 @@
-from .models import MultiLineage, MultiLineageArma, SimpleMultiLineage
+from .clock_reset import MultiLineageClockReset as MultiLineage
 
-__all__ = ["MultiLineage", "SimpleMultiLineage", "MultiLineageArma"]
+__all__ = [
+    "MultiLineage",
+]

@@ -1,5 +1,5 @@
+import functools
 import pickle
-from functools import lru_cache
 
 import jax.numpy as jnp
 import numpy as np
@@ -12,11 +12,39 @@ from numpyro.infer import MCMC, NUTS, SVI, Predictive, Trace_ELBO
 from genomicsurveillance.types import Guide, Model
 
 
+def ignore_unhashable(func):
+    uncached = func.__wrapped__
+    attributes = functools.WRAPPER_ASSIGNMENTS + ("cache_info", "cache_clear")
+
+    @functools.wraps(func, assigned=attributes)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except TypeError as error:
+            if "unhashable type" in str(error):
+                return uncached(*args, **kwargs)
+            raise
+
+    wrapper.__uncached__ = uncached
+    return wrapper
+
+
 def _print_consumer(arg, transform):
     iter_num, num_samples = arg
     print(
         f"SVI step {iter_num:,} / {num_samples:,} | {iter_num/num_samples * 100:.0f} %"
     )
+
+
+def make_array(arg):
+    if isinstance(arg, int):
+        arr = np.array([arg])
+    elif isinstance(arg, list):
+        arr = np.array(arg)
+    else:
+        arr = arg
+
+    return arr
 
 
 class Posterior(object):
@@ -47,27 +75,48 @@ class Posterior(object):
     def items(self):
         return self.data.items()
 
-    @lru_cache(maxsize=128)
-    def median(self, param, *args, **kwargs):
+    def indices(self, shape, *args):
+        """
+        Creates indices for easier access to variables.
+        """
+        indices = [np.arange(shape[0])]
+        for i, arg in enumerate(args):
+            if arg is None:
+                indices.append(np.arange(shape[i + 1]))
+            else:
+                indices.append(make_array(arg))
+        return np.ix_(*indices)
+
+    def dist(self, param, *args, **kwargs):
+        indices = self.indices(self[param].shape, *args)
+        return self[param][indices]
+
+    @ignore_unhashable
+    @functools.lru_cache(maxsize=128)
+    def median(self, param, *args):
         """Returns the median of param."""
-        return jnp.median(self.data[param][tuple([slice(None), *args])], axis=0)
+        return np.median(self.dist(param, *args), axis=0)
 
-    @lru_cache(maxsize=128)
-    def mean(self, param, *args, **kwargs):
+    @ignore_unhashable
+    @functools.lru_cache(maxsize=128)
+    def mean(self, param, *args):
         """Returns the mean of param."""
-        return self.data[param][tuple([slice(None), *args])].mean(0)
+        return np.mean(self.dist(param, *args), axis=0)
 
-    @lru_cache(maxsize=128)
+    @ignore_unhashable
+    @functools.lru_cache(maxsize=128)
     def hpdi(self, param, *args, **kwargs):
         """Returns the highest predictive density interval of param."""
-        return hpdi(self.data[param][tuple([slice(None), *args])], **kwargs)
+        return hpdi(self.dist(param, *args), **kwargs)
 
-    @lru_cache(maxsize=128)
+    @ignore_unhashable
+    @functools.lru_cache(maxsize=128)
     def quantiles(self, param, *args, **kwargs):
         """Returns the quantiles of param."""
-        return jnp.quantile(
-            self.data[param][tuple([slice(None), *args])],
-            jnp.array([0.025, 0.975]),
+        q = kwargs.pop("q", [0.025, 0.975])
+        return np.quantile(
+            self.dist(param, *args),
+            q,
             axis=0,
         )
 
@@ -88,12 +137,7 @@ class Posterior(object):
         return self.hpdi(param, *args, **kwargs)[1]
 
     def ci(self, param, *args, **kwargs):
-        return np.abs(
-            self.mean(param, *args, **kwargs) - self.hpdi(param, *args, **kwargs)
-        )
-
-    def dist(self, param, *args, **kwargs):
-        return self[param][tuple([slice(None), *args])]
+        return np.abs(self.mean(param, *args) - self.hpdi(param, *args, **kwargs))
 
 
 class Handler(object):
@@ -138,9 +182,9 @@ class SVIHandler(Handler):
         guide: Guide,
         loss: Trace_ELBO = Trace_ELBO(num_particles=1),
         optimizer: optim.optimizers.optimizer = optim.Adam,
-        lr: float = 0.01,
+        lr: float = 0.001,
         rng_key: int = 254,
-        num_epochs: int = 5000,
+        num_epochs: int = 30000,
         num_samples: int = 1000,
         log_func=_print_consumer,
         log_freq=1000,
@@ -190,8 +234,9 @@ class SVIHandler(Handler):
         self.init_state = state
         self.loss = loss if self.loss is None else jnp.concatenate([self.loss, loss])
 
-    def fit(self, predictive_kwargs: dict = {}, *args, **kwargs):
-        self.num_epochs = kwargs.get("num_epochs", self.num_epochs)
+    def fit(self, *args, **kwargs):
+        self.num_epochs = kwargs.pop("num_epochs", self.num_epochs)
+        predictive_kwargs = kwargs.pop("predictive_kwargs", {})
 
         if self.init_state is None:
             self.init_state = self.svi.init(self.rng_key, *args)
@@ -209,6 +254,8 @@ class SVIHandler(Handler):
         )
 
         self.posterior = Posterior(predictive(self.rng_key, *args), self.to_numpy)
+
+        return self
 
     def predict(self, *args, **kwargs):
         """kwargs -> Predictive, args -> predictive"""
@@ -255,8 +302,8 @@ class NutsHandler(Handler):
         self.mcmc = MCMC(self.kernel, num_warmup, num_samples, num_chains=num_chains)
 
     def predict(self, *args, **kwargs):
-        predictive = Predictive(self.model, self.posterior, **kwargs)
-        self.predictive = predictive(self.rng_key_, *args)
+        predictive = Predictive(self.model, self.posterior.data, **kwargs)
+        self.predictive = Posterior(predictive(self.rng_key_, *args))
 
     def fit(self, *args, **kwargs):
         self.num_samples = kwargs.get("num_samples", self.num_samples)
@@ -287,7 +334,7 @@ class SVIModel(SVIHandler):
 class Model(SVIHandler, NutsHandler):
     _latent_variables = []
 
-    def __init__(self, handler, *args, **kwargs):
+    def __init__(self, handler="SVI", *args, **kwargs):
         self.handler = handler
         if handler == "SVI":
             SVIHandler.__init__(self, self.model, self.guide, *args, **kwargs)

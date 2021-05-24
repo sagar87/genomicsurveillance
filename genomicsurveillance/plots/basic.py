@@ -7,7 +7,7 @@ def dot_plot(
     variable="sa",
     baseline="B.1",
     title=None,
-    ylabel="Transmissibility",
+    ylabel="Relative Growth Rate",
     xlabel="Lineage",
     xticklabels=None,
     ax=None,
@@ -27,7 +27,7 @@ def dot_plot(
     ax.margins(x=0.01)
 
     if xticklabels:
-        _ = ax.set_xticklabels([m for m in xticklabels if m != baseline], rotation=90)
+        _ = ax.set_xticklabels(xticklabels, rotation=90)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     if title:
