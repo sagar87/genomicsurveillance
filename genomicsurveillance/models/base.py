@@ -288,3 +288,12 @@ class Lineage(object):
 
         agg = self.aggregate(region, weighted_log_R, time)
         return agg / lambda_regions
+
+    def aggregate_log_R_lineage(self, region, time=None):
+        lambda_regions = self.aggregate_lambda_lineage(region, time)
+
+        def weighted_log_R(ltla, time):
+            return self.get_log_R(ltla, time) * self.get_lambda_lineage(ltla, time)
+
+        agg = self.aggregate(region, weighted_log_R, time)
+        return agg / lambda_regions
