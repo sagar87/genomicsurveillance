@@ -265,6 +265,9 @@ class Lineage(object):
     def aggregate_lambda(self, region, time=None):
         return self.aggregate(region, self.get_lambda, time)
 
+    def aggregate_growth_rate(self, region, time=None):
+        return self.aggregate(region, self.get_growth_rate, time)
+
     def aggregate_lambda_lineage(self, region, time=None, lineage=None):
         """
         Aggregates lambda lineage by an indicator array.
