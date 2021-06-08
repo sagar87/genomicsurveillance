@@ -191,7 +191,7 @@ class Lineage(object):
         p = self.get_probabilities(ltla, time)
         b1 = self._expand_dims(self.posterior.dist(Sites.B1, ltla), dim=self.TIME_DIM)
         gr = self.get_growth_rate(ltla, time)
-        gr_lin = gr - np.einsum("mijk,milk->mijl", p, b1)
+        gr_lin = gr - np.einsum("mijk,milk->mijl", p, b1) + b1
 
         if lineage is not None:
             idx = make_array(lineage)
