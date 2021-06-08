@@ -187,6 +187,19 @@ class Lineage(object):
         gr = self._expand_dims(gr, dim=self.LIN_DIM)
         return gr
 
+    def get_growth_rate_lineage(self, ltla, time=None, lineage=None):
+        p = self.get_probabilities(ltla, time)
+        b1 = self._expand_dims(self.posterior.dist(Sites.B1, ltla), dim=self.TIME_DIM)
+        gr = self.get_growth_rate(ltla, time)
+        gr_lin = gr - np.einsum("mijk,milk->mijl", p, b1)
+
+        if lineage is not None:
+            idx = make_array(lineage)
+        else:
+            idx = slice(None)
+
+        return gr_lin[..., idx]
+
     def get_lambda(self, ltla=None, time=None):
         """
         Returns the posterior distribution of the incidence.
