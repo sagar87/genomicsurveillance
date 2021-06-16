@@ -230,10 +230,9 @@ class TruncatedKnots(object):
                     self.t.shape[0] - self.padding,
                     self.periods,
                 )
-                if not i in self.truncate
+                if i not in self.truncate
             ]
         )
-        print(self.knot_list)
 
         self.p = np.array([dist(i, **dist_kwargs) for i in range(self.padding)])
         self.p /= self.p.sum()
