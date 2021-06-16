@@ -2,6 +2,10 @@
 History
 *******
 
+0.4.2 (2021-06-16)
+==================
+
+* Improved `Knot` class to improve R values at the end of the time series.
 
 0.4.1 (2021-05-28)
 ==================
