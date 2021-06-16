@@ -4,7 +4,7 @@ from jax.ops import index, index_update
 from jax.scipy.special import logsumexp
 
 from genomicsurveillance.handler import Posterior, make_array
-from genomicsurveillance.utils import Knots
+from genomicsurveillance.utils import TruncatedKnots
 
 from .sites import Sites
 
@@ -39,7 +39,7 @@ class Lineage(object):
         self.auto_correlation = auto_correlation
 
         if basis is None:
-            knots = Knots(cases.shape[1], periods=14)
+            knots = TruncatedKnots(cases.shape[-1], periods=14)
             self.B = knots.basis
             # _, self.B = create_spline_basis(
             #     np.arange(cases.shape[1]),
@@ -50,7 +50,7 @@ class Lineage(object):
             self.B = basis
 
         self.num_ltla = self.cases.shape[0]
-        self.num_time = self.cases.shape[1]
+        self.num_time = self.cases.shape[-1]
         self.num_lin = self.lineages.shape[-1] - 1
         self.num_basis = self.B.shape[-1]
         self.num_ltla_lin = self.nan_idx.shape[0]

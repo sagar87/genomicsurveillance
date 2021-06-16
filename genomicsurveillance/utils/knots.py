@@ -190,3 +190,79 @@ class KnotList(Knots):
             },
         ).assign(idx=lambda df: np.arange(-self.padding, df.shape[0] - self.padding))
         return df
+
+
+class TruncatedKnots(object):
+    def __init__(
+        self,
+        days: int,
+        shift: int = 1,
+        periods: int = 7,
+        padding: int = 21,
+        dist: Callable = infection_to_test,
+        dist_kwargs: dict = {},
+        degree: int = 3,
+        offset: int = 0,
+        truncate: int = 21,
+    ):
+        self.days = days
+        self.shift = shift
+        self.padding = padding
+        self.periods = periods
+        self.offset = offset
+        self.degree = degree
+
+        self.t = np.arange(-self.padding, self.days)
+
+        self.day = shift
+
+        self.knot_list = np.arange(
+            self.day - self.padding - 1,
+            self.t.shape[0] - self.padding,
+            self.periods,
+        )
+        self.truncate = [i for i in range(self.days - truncate, self.days)]
+        self.knot_list = np.array(
+            [
+                i
+                for i in range(
+                    self.day - self.padding - 1,
+                    self.t.shape[0] - self.padding,
+                    self.periods,
+                )
+                if not i in self.truncate
+            ]
+        )
+        print(self.knot_list)
+
+        self.p = np.array([dist(i, **dist_kwargs) for i in range(self.padding)])
+        self.p /= self.p.sum()
+
+        self.get_spline_basis()
+        self.convolve_spline_basis()
+
+    def get_spline_basis(self):
+        self.knots = np.pad(self.knot_list, (self.degree, self.degree), mode="edge")
+        B0 = BSpline(self.knots, np.identity(len(self.knots)), k=self.degree)
+        self.B_pad = B0(self.t)
+        self.B = self.B_pad[self.padding :]
+
+        if self.degree > 0:
+            self.B_diff = B0.derivative()(self.t)[self.padding :]
+        else:
+            self.B_diff = np.zeros(self.B.shape)[self.padding :]
+
+    def convolve_spline_basis(self):
+        B_conv = np.vstack(
+            [
+                np.convolve(self.B_pad[:, i], self.p, "full")[
+                    self.padding + self.offset :
+                ][: self.B.shape[0]]
+                for i in range(self.B.shape[1])
+            ]
+        ).T
+
+        b = np.where(B_conv.sum(0) == 0)[0]
+        self.B_conv = np.delete(B_conv, b, axis=1)
+        self.B_diff = np.delete(self.B_diff, b, axis=1)
+        self.basis = np.stack([self.B_conv, self.B_diff])
