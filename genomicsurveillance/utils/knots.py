@@ -212,7 +212,7 @@ class TruncatedKnots(object):
         self.offset = offset
         self.degree = degree
 
-        self.t = np.arange(-self.padding, self.days)
+        self.t = np.arange(-self.padding, self.days + self.padding)
 
         self.day = shift
 
@@ -244,12 +244,12 @@ class TruncatedKnots(object):
         self.knots = np.pad(self.knot_list, (self.degree, self.degree), mode="edge")
         B0 = BSpline(self.knots, np.identity(len(self.knots)), k=self.degree)
         self.B_pad = B0(self.t)
-        self.B = self.B_pad[self.padding :]
+        self.B = self.B_pad[self.padding : -self.padding]
 
         if self.degree > 0:
-            self.B_diff = B0.derivative()(self.t)[self.padding :]
+            self.B_diff = B0.derivative()(self.t)[self.padding : -self.padding]
         else:
-            self.B_diff = np.zeros(self.B.shape)[self.padding :]
+            self.B_diff = np.zeros(self.B.shape)[self.padding : -self.padding]
 
     def convolve_spline_basis(self):
         B_conv = np.vstack(
