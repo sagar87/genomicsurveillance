@@ -2,6 +2,7 @@ from .epiestim import epiestim_discretise_serial_interval, epiestim_R, infection
 from .knots import (
     KnotList,
     Knots,
+    NowCastKnots,
     TruncatedKnots,
     create_date_list,
     create_spline_basis,
@@ -18,5 +19,6 @@ __all__ = [
     "sort_lineages",
     "preprocess_lineage_tensor",
     "infection_to_test",
+    "NowCastKnots",
     "TruncatedKnots",
 ]

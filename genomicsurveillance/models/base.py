@@ -4,7 +4,7 @@ from jax.ops import index, index_update
 from jax.scipy.special import logsumexp
 
 from genomicsurveillance.handler import Posterior, make_array
-from genomicsurveillance.utils import TruncatedKnots
+from genomicsurveillance.utils import NowCastKnots
 
 from .sites import Sites
 
@@ -27,7 +27,7 @@ class Lineage(object):
         lineage_dates,
         population,
         basis=None,
-        auto_correlation=0.5,
+        auto_correlation=None,
         posterior=None,
     ):
         self.tau = tau
@@ -39,7 +39,7 @@ class Lineage(object):
         self.auto_correlation = auto_correlation
 
         if basis is None:
-            knots = TruncatedKnots(cases.shape[-1], periods=14)
+            knots = NowCastKnots(cases.shape[-1])
             self.B = knots.basis
             # _, self.B = create_spline_basis(
             #     np.arange(cases.shape[1]),
@@ -98,21 +98,26 @@ class Lineage(object):
     @property
     def arma(self):
         if not hasattr(self, "_arma"):
-            Σ0 = jnp.eye(self.num_basis)
-            for i in range(1, self.num_basis):
-                Σ0 = index_update(Σ0, index[i, i - 1], jnp.array(self.auto_correlation))
+            if self.auto_correlation is None:
+                self._arma = jnp.eye(self.num_basis)
+            else:
+                Σ0 = jnp.eye(self.num_basis)
+                for i in range(1, self.num_basis):
+                    Σ0 = index_update(
+                        Σ0, index[i, i - 1], jnp.array(self.auto_correlation)
+                    )
 
-            Π0 = jnp.linalg.inv(Σ0)
+                Π0 = jnp.linalg.inv(Σ0)
 
-            for i in range(self.num_basis - 3, self.num_basis):
-                Π0 = index_update(Π0, index[i, i - 2 : i], jnp.array([1, -2]))
+                for i in range(self.num_basis - 3, self.num_basis):
+                    Π0 = index_update(Π0, index[i, i - 2 : i], jnp.array([1, -2]))
 
-            Π0 = index_update(
-                Π0,
-                index[self.num_basis - 3, self.num_basis - 5 : self.num_basis - 3],
-                0.5 * jnp.array([1, -2]),
-            )
-            self._arma = jnp.linalg.inv(Π0)
+                Π0 = index_update(
+                    Π0,
+                    index[self.num_basis - 3, self.num_basis - 5 : self.num_basis - 3],
+                    0.5 * jnp.array([1, -2]),
+                )
+                self._arma = jnp.linalg.inv(Π0)
         return self._arma
 
     @property
