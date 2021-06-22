@@ -28,6 +28,7 @@ class Lineage(object):
         population,
         basis=None,
         auto_correlation=None,
+        linearize=False,
         posterior=None,
     ):
         self.tau = tau
@@ -37,6 +38,7 @@ class Lineage(object):
         self.population = population
         self.posterior = Posterior(posterior) if posterior is not None else posterior
         self.auto_correlation = auto_correlation
+        self.linearize = linearize
 
         if basis is None:
             knots = NowCastKnots(cases.shape[-1])
@@ -107,17 +109,22 @@ class Lineage(object):
                         Σ0, index[i, i - 1], jnp.array(self.auto_correlation)
                     )
 
-                Π0 = jnp.linalg.inv(Σ0)
+                if self.linearise:
+                    Π0 = jnp.linalg.inv(Σ0)
 
-                for i in range(self.num_basis - 3, self.num_basis):
-                    Π0 = index_update(Π0, index[i, i - 2 : i], jnp.array([1, -2]))
+                    for i in range(self.num_basis - 3, self.num_basis):
+                        Π0 = index_update(Π0, index[i, i - 2 : i], jnp.array([1, -2]))
 
-                Π0 = index_update(
-                    Π0,
-                    index[self.num_basis - 3, self.num_basis - 5 : self.num_basis - 3],
-                    0.5 * jnp.array([1, -2]),
-                )
-                self._arma = jnp.linalg.inv(Π0)
+                    Π0 = index_update(
+                        Π0,
+                        index[
+                            self.num_basis - 3, self.num_basis - 5 : self.num_basis - 3
+                        ],
+                        0.5 * jnp.array([1, -2]),
+                    )
+                    self._arma = jnp.linalg.inv(Π0)
+                else:
+                    self._arma = Σ0
         return self._arma
 
     @property

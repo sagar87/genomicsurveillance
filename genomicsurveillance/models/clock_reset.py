@@ -64,6 +64,7 @@ class MultiLineageClockReset(Model, Lineage):
         rho_loc: float = np.log(10.0),
         rho_scale: float = 1.0,
         auto_correlation: float = 0.5,
+        linearize: bool = False,
         offset: int = 21,
         independent_clock: bool = False,
         posterior=None,
@@ -88,6 +89,7 @@ class MultiLineageClockReset(Model, Lineage):
             population=population,
             basis=basis,
             auto_correlation=auto_correlation,
+            linearize=linearize,
             posterior=posterior,
         )
 
