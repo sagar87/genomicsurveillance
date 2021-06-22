@@ -2,6 +2,11 @@
 History
 *******
 
+0.5.0 (2021-06-22)
+==================
+
+* `MultiLineage` uses a different combination of spline functions to regularise model predictions at the end of a time series.
+
 0.4.5 (2021-06-18)
 ==================
 
