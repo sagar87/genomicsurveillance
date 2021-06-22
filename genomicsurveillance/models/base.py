@@ -109,7 +109,7 @@ class Lineage(object):
                         Σ0, index[i, i - 1], jnp.array(self.auto_correlation)
                     )
 
-                if self.linearise:
+                if self.linearize:
                     Π0 = jnp.linalg.inv(Σ0)
 
                     for i in range(self.num_basis - 3, self.num_basis):
