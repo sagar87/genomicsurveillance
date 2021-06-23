@@ -272,5 +272,5 @@ class NowCastKnots(object):
         self.short = Knots(days, periods=short_interval)
         self.long = TruncatedKnots(days, periods=long_interval, truncate=long_interval)
         self.basis = np.concatenate(
-            [self.short.basis, self.long.basis[..., :-cutoff]], -1
+            [self.long.basis, self.short.basis[..., :-cutoff]], -1
         )
