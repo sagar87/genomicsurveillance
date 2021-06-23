@@ -269,8 +269,13 @@ class TruncatedKnots(object):
 
 class NowCastKnots(object):
     def __init__(self, days, short_interval=14, long_interval=31, cutoff=6):
+        self.cutoff = cutoff
         self.short = Knots(days, periods=short_interval)
         self.long = TruncatedKnots(days, periods=long_interval, truncate=long_interval)
+
         self.basis = np.concatenate(
             [self.long.basis, self.short.basis[..., :-cutoff]], -1
         )
+
+        self.num_long_basis = self.long.basis.shape[-1]
+        self.num_short_basis = self.short.basis.shape[-1] - cutoff
