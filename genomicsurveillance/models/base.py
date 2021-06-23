@@ -41,8 +41,8 @@ class Lineage(object):
         self.linearize = linearize
 
         if basis is None:
-            knots = NowCastKnots(cases.shape[-1])
-            self.B = knots.basis
+            self.knots = NowCastKnots(cases.shape[-1])
+            self.B = self.knots.basis
             # _, self.B = create_spline_basis(
             #     np.arange(cases.shape[1]),
             #     num_knots=int(np.ceil(cases.shape[1] / 10)),
