@@ -63,6 +63,7 @@ class MultiLineageClockReset(Model, Lineage):
         fit_rho: bool = False,
         rho_loc: float = np.log(10.0),
         rho_scale: float = 1.0,
+        week: bool = False,
         auto_correlation: float = 0.5,
         linearize: bool = False,
         offset: int = 21,
@@ -116,6 +117,7 @@ class MultiLineageClockReset(Model, Lineage):
 
         self.offset = offset
         self.independent_clock = independent_clock
+        self.week = week
         self.time, self.intercept = self.clock()
         self.u, self.v0, self.w = np.ogrid[tuple(map(slice, self.time.shape))]
 
@@ -371,6 +373,16 @@ class MultiLineageClockReset(Model, Lineage):
         lamb = npy.deterministic(
             Sites.LAMBDA_LINEAGE, self.population.reshape(-1, 1) * mu
         )
+
+        if self.week:
+            # indicator for weekday
+            week = np.array(
+                [jnp.arange(self.num_time) % 7 == i for i in range(7)]
+            ).astype("float")
+            # model weekday effect
+            day = npy.sample("day", dist.Normal(jnp.zeros([7]), jnp.ones([7]))) * 0.25
+            mu_week = npy.deterministic("mu_week", jnp.exp(day) @ week)
+            lamb = lamb * mu_week.reshape(1, -1)
 
         npy.sample(
             Sites.CASES,
