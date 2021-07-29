@@ -376,7 +376,7 @@ class MultiLineageClockReset(Model, Lineage):
 
         if self.week:
             # indicator for weekday
-            week = np.array(
+            week = jnp.array(
                 [jnp.arange(self.num_time) % 7 == i for i in range(7)]
             ).astype("float")
             # model weekday effect
