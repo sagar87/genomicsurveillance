@@ -317,7 +317,9 @@ class Lineage(object):
         :param lineage: index array containing indices of lineage of interest
         :return: a numpy array containing aggregated incidence due to each lineage
         """
-        return self.aggregate(region, self.get_lambda_lineage, time, lineage)
+        return self.aggregate(
+            region, self.get_lambda_lineage, time=time, lineage=lineage
+        )
 
     def aggregate_probabilities(self, region, time=None, lineage=None):
         lambda_lin = self.aggregate_lambda_lineage(region, time=time, lineage=lineage)
@@ -340,7 +342,9 @@ class Lineage(object):
                 ltla, time
             )
 
-        agg = self.aggregate(region, weighted_log_R, time=time)
+        agg = self.aggregate(
+            region, weighted_log_R, correct_zero_obs=self.EPS, time=time
+        )
         return agg / lambda_regions
 
     def aggregate_growth_rate_lineage(self, region, time=None):
@@ -351,5 +355,7 @@ class Lineage(object):
                 ltla, time
             )
 
-        agg = self.aggregate(region, weighted_growth_rate, time=time)
+        agg = self.aggregate(
+            region, weighted_growth_rate, correct_zero_obs=self.EPS, time=time
+        )
         return agg / lambda_regions
