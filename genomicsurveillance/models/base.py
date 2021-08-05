@@ -146,9 +146,9 @@ class Lineage(object):
             ].astype(int)
         return self._missing_lineages
 
-    def aggregate(self, region, func, zero_obs=True, *args, **kwargs):
+    def aggregate(self, region, func, correct_zero_obs=None, *args, **kwargs):
         agg = []
-        if zero_obs:
+        if correct_zero_obs is not None:
             lin_obs = (self.lineages.sum(-1) != 0).astype(int)
 
         for i in np.sort(np.unique(region)):
@@ -159,12 +159,16 @@ class Lineage(object):
 
             for r in region_idx[1:]:
                 arr = func(int(r), *args, **kwargs)
-                if zero_obs:
+                if correct_zero_obs is not None:
                     j = np.argmax(lin_obs[r])
                     if j > 0:
                         k = self.lineage_dates[j]
                         arr = np.concatenate(
-                            [np.zeros_like(arr)[:, :, :k], arr[:, :, k:]], 2
+                            [
+                                correct_zero_obs * np.ones_like(arr)[:, :, :k],
+                                arr[:, :, k:],
+                            ],
+                            2,
                         )
                 aggregate += arr
 
