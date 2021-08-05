@@ -321,7 +321,7 @@ class Lineage(object):
         lambda_regions = self.aggregate_lambda_lineage(region, time)
 
         def weighted_log_R(ltla, time):
-            return self.get_log_R(ltla, time) * self.get_lambda_lineage(ltla, time)
+            return self.get_log_R_lineage(ltla, time) * self.get_lambda_lineage(ltla, time)
 
         agg = self.aggregate(region, weighted_log_R, time)
         return agg / lambda_regions
@@ -330,7 +330,7 @@ class Lineage(object):
         lambda_regions = self.aggregate_lambda_lineage(region, time)
 
         def weighted_growth_rate(ltla, time):
-            return self.get_growth_rate(ltla, time) * self.get_lambda_lineage(
+            return self.get_growth_rate_lineage(ltla, time) * self.get_lambda_lineage(
                 ltla, time
             )
 
