@@ -150,7 +150,7 @@ class Lineage(object):
         agg = []
         if zero_obs:
             lin_obs = (self.lineages.sum(-1) != 0).astype(int)
-        
+
         for i in np.sort(np.unique(region)):
             region_idx = np.where(region == i)[0]
             region_not_nan = np.isin(region_idx, self.nan_idx)
@@ -163,7 +163,9 @@ class Lineage(object):
                     j = np.argmax(lin_obs[r])
                     if j > 0:
                         k = self.lineage_dates[j]
-                        arr = np.concatenate([np.zeros_like(arr)[:,:,:k], arr[:,:,k:]], 2)
+                        arr = np.concatenate(
+                            [np.zeros_like(arr)[:, :, :k], arr[:, :, k:]], 2
+                        )
                 aggregate += arr
 
             agg.append(aggregate)
@@ -318,32 +320,32 @@ class Lineage(object):
         return lambda_lin / lambda_lin.sum(-1, keepdims=True)
 
     def aggregate_log_R(self, region, time=None):
-        lambda_regions = self.aggregate_lambda(region, time)
+        lambda_regions = self.aggregate_lambda(region, time=time)
 
         def weighted_log_R(ltla, time):
             return self.get_log_R(ltla, time) * self.get_lambda(ltla, time)
 
-        agg = self.aggregate(region, weighted_log_R, time)
+        agg = self.aggregate(region, weighted_log_R, time=time)
         return agg / lambda_regions
 
     def aggregate_log_R_lineage(self, region, time=None):
-        lambda_regions = self.aggregate_lambda_lineage(region, time)
+        lambda_regions = self.aggregate_lambda_lineage(region, time=time)
 
         def weighted_log_R(ltla, time):
             return self.get_log_R_lineage(ltla, time) * self.get_lambda_lineage(
                 ltla, time
             )
 
-        agg = self.aggregate(region, weighted_log_R, time)
+        agg = self.aggregate(region, weighted_log_R, time=time)
         return agg / lambda_regions
 
     def aggregate_growth_rate_lineage(self, region, time=None):
-        lambda_regions = self.aggregate_lambda_lineage(region, time)
+        lambda_regions = self.aggregate_lambda_lineage(region, time=time)
 
         def weighted_growth_rate(ltla, time):
             return self.get_growth_rate_lineage(ltla, time) * self.get_lambda_lineage(
                 ltla, time
             )
 
-        agg = self.aggregate(region, weighted_growth_rate, time)
+        agg = self.aggregate(region, weighted_growth_rate, time=time)
         return agg / lambda_regions
