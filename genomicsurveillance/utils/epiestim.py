@@ -39,9 +39,9 @@ def epiestim_R(
         the mean, lower and upper bounds of the calculated R value.
     """
     # TODO: Refactor this logic ?
-    assert ((sigma is not None) and (cv is None)) or (
-        (sigma is None) and (cv is not None)
-    ), "Either sigma OR cv must be defined."
+    # assert ((sigma is not None) and (cv is None)) or (
+    #     (sigma is None) and (cv is not None)
+    # ), "Either sigma OR cv must be defined."
 
     if cv is not None:
         sigma = cv * mu
@@ -87,9 +87,9 @@ def epiestim_discretise_serial_interval(
     :returns: Discretised serial interval distribution.
     """
     # TODO: Refactor this logic ?
-    assert ((sigma is not None) and (cv is None)) or (
-        (sigma is None) and (cv is not None)
-    ), "Either sigma OR cv must be defined."
+    # assert ((sigma is not None) and (cv is None)) or (
+    #     (sigma is None) and (cv is not None)
+    # ), "Either sigma OR cv must be defined."
 
     if cv is not None:
         sigma = cv * mu

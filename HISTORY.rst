@@ -2,6 +2,32 @@
 History
 *******
 
+0.5.1 (2021-06-23)
+==================
+
+* Improvements to `NowCastNodes` class.
+
+
+0.5.0 (2021-06-22)
+==================
+
+* `MultiLineage` uses a different combination of spline functions to regularise model predictions at the end of a time series.
+
+0.4.5 (2021-06-18)
+==================
+
+* Fixes in the `TruncatedKnots`.
+
+0.4.2 (2021-06-16)
+==================
+
+* Improved `Knot` class to improve R values at the end of the time series.
+
+0.4.1 (2021-05-28)
+==================
+
+* added `aggregate_log_R_lineage` method.
+
 
 0.4.1 (2021-05-24)
 ==================

@@ -4,7 +4,7 @@ from jax.ops import index, index_update
 from jax.scipy.special import logsumexp
 
 from genomicsurveillance.handler import Posterior, make_array
-from genomicsurveillance.utils import Knots
+from genomicsurveillance.utils import NowCastKnots
 
 from .sites import Sites
 
@@ -27,7 +27,8 @@ class Lineage(object):
         lineage_dates,
         population,
         basis=None,
-        auto_correlation=0.5,
+        auto_correlation=None,
+        linearize=False,
         posterior=None,
     ):
         self.tau = tau
@@ -37,10 +38,11 @@ class Lineage(object):
         self.population = population
         self.posterior = Posterior(posterior) if posterior is not None else posterior
         self.auto_correlation = auto_correlation
+        self.linearize = linearize
 
         if basis is None:
-            knots = Knots(cases.shape[1], periods=14)
-            self.B = knots.basis
+            self.knots = NowCastKnots(cases.shape[-1])
+            self.B = self.knots.basis
             # _, self.B = create_spline_basis(
             #     np.arange(cases.shape[1]),
             #     num_knots=int(np.ceil(cases.shape[1] / 10)),
@@ -50,7 +52,7 @@ class Lineage(object):
             self.B = basis
 
         self.num_ltla = self.cases.shape[0]
-        self.num_time = self.cases.shape[1]
+        self.num_time = self.cases.shape[-1]
         self.num_lin = self.lineages.shape[-1] - 1
         self.num_basis = self.B.shape[-1]
         self.num_ltla_lin = self.nan_idx.shape[0]
@@ -98,21 +100,31 @@ class Lineage(object):
     @property
     def arma(self):
         if not hasattr(self, "_arma"):
-            Σ0 = jnp.eye(self.num_basis)
-            for i in range(1, self.num_basis):
-                Σ0 = index_update(Σ0, index[i, i - 1], jnp.array(self.auto_correlation))
+            if self.auto_correlation is None:
+                self._arma = jnp.eye(self.num_basis)
+            else:
+                Σ0 = jnp.eye(self.num_basis)
+                for i in range(1, self.num_basis):
+                    Σ0 = index_update(
+                        Σ0, index[i, i - 1], jnp.array(self.auto_correlation)
+                    )
 
-            Π0 = jnp.linalg.inv(Σ0)
+                if self.linearize:
+                    Π0 = jnp.linalg.inv(Σ0)
 
-            for i in range(self.num_basis - 3, self.num_basis):
-                Π0 = index_update(Π0, index[i, i - 2 : i], jnp.array([1, -2]))
+                    for i in range(self.num_basis - 3, self.num_basis):
+                        Π0 = index_update(Π0, index[i, i - 2 : i], jnp.array([1, -2]))
 
-            Π0 = index_update(
-                Π0,
-                index[self.num_basis - 3, self.num_basis - 5 : self.num_basis - 3],
-                0.5 * jnp.array([1, -2]),
-            )
-            self._arma = jnp.linalg.inv(Π0)
+                    Π0 = index_update(
+                        Π0,
+                        index[
+                            self.num_basis - 3, self.num_basis - 5 : self.num_basis - 3
+                        ],
+                        0.5 * jnp.array([1, -2]),
+                    )
+                    self._arma = jnp.linalg.inv(Π0)
+                else:
+                    self._arma = Σ0
         return self._arma
 
     @property
@@ -134,8 +146,11 @@ class Lineage(object):
             ].astype(int)
         return self._missing_lineages
 
-    def aggregate(self, region, func, *args, **kwargs):
+    def aggregate(self, region, func, correct_zero_obs=None, *args, **kwargs):
         agg = []
+        if correct_zero_obs is not None:
+            lin_obs = (self.lineages.sum(-1) != 0).astype(int)
+
         for i in np.sort(np.unique(region)):
             region_idx = np.where(region == i)[0]
             region_not_nan = np.isin(region_idx, self.nan_idx)
@@ -143,7 +158,19 @@ class Lineage(object):
             aggregate = func(int(region_idx[0]), *args, **kwargs)
 
             for r in region_idx[1:]:
-                aggregate += func(int(r), *args, **kwargs)
+                arr = func(int(r), *args, **kwargs)
+                if correct_zero_obs is not None:
+                    j = np.argmax(lin_obs[r])
+                    if j > 0:
+                        k = self.lineage_dates[j]
+                        arr = np.concatenate(
+                            [
+                                correct_zero_obs * np.ones_like(arr)[:, :, :k],
+                                arr[:, :, k:],
+                            ],
+                            2,
+                        )
+                aggregate += arr
 
             agg.append(aggregate)
 
@@ -186,6 +213,19 @@ class Lineage(object):
         gr = np.einsum("ijk,kl->ijl", beta, basis)
         gr = self._expand_dims(gr, dim=self.LIN_DIM)
         return gr
+
+    def get_growth_rate_lineage(self, ltla, time=None, lineage=None):
+        p = self.get_probabilities(ltla, time)
+        b1 = self._expand_dims(self.posterior.dist(Sites.B1, ltla), dim=self.TIME_DIM)
+        gr = self.get_growth_rate(ltla, time)
+        gr_lin = gr - np.einsum("mijk,milk->mijl", p, b1) + b1
+
+        if lineage is not None:
+            idx = make_array(lineage)
+        else:
+            idx = slice(None)
+
+        return gr_lin[..., idx]
 
     def get_lambda(self, ltla=None, time=None):
         """
@@ -265,6 +305,9 @@ class Lineage(object):
     def aggregate_lambda(self, region, time=None):
         return self.aggregate(region, self.get_lambda, time)
 
+    def aggregate_growth_rate(self, region, time=None):
+        return self.aggregate(region, self.get_growth_rate, time)
+
     def aggregate_lambda_lineage(self, region, time=None, lineage=None):
         """
         Aggregates lambda lineage by an indicator array.
@@ -274,17 +317,45 @@ class Lineage(object):
         :param lineage: index array containing indices of lineage of interest
         :return: a numpy array containing aggregated incidence due to each lineage
         """
-        return self.aggregate(region, self.get_lambda_lineage, time, lineage)
+        return self.aggregate(
+            region, self.get_lambda_lineage, time=time, lineage=lineage
+        )
 
     def aggregate_probabilities(self, region, time=None, lineage=None):
         lambda_lin = self.aggregate_lambda_lineage(region, time=time, lineage=lineage)
         return lambda_lin / lambda_lin.sum(-1, keepdims=True)
 
     def aggregate_log_R(self, region, time=None):
-        lambda_regions = self.aggregate_lambda(region, time)
+        lambda_regions = self.aggregate_lambda(region, time=time)
 
         def weighted_log_R(ltla, time):
             return self.get_log_R(ltla, time) * self.get_lambda(ltla, time)
 
-        agg = self.aggregate(region, weighted_log_R, time)
+        agg = self.aggregate(region, weighted_log_R, time=time)
+        return agg / lambda_regions
+
+    def aggregate_log_R_lineage(self, region, time=None):
+        lambda_regions = self.aggregate_lambda_lineage(region, time=time)
+
+        def weighted_log_R(ltla, time):
+            return self.get_log_R_lineage(ltla, time) * self.get_lambda_lineage(
+                ltla, time
+            )
+
+        agg = self.aggregate(
+            region, weighted_log_R, correct_zero_obs=self.EPS, time=time
+        )
+        return agg / lambda_regions
+
+    def aggregate_growth_rate_lineage(self, region, time=None):
+        lambda_regions = self.aggregate_lambda_lineage(region, time=time)
+
+        def weighted_growth_rate(ltla, time):
+            return self.get_growth_rate_lineage(ltla, time) * self.get_lambda_lineage(
+                ltla, time
+            )
+
+        agg = self.aggregate(
+            region, weighted_growth_rate, correct_zero_obs=self.EPS, time=time
+        )
         return agg / lambda_regions
