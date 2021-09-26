@@ -30,6 +30,15 @@ To install :code:`genomicsurveillance` via Pypi simply type
 
 into your shell.
 
+***************
+Getting started
+***************
+
+We provide a Google Colab notebook that explains data preparation steps and the usage of the model.
+
+https://colab.research.google.com/drive/1bKEnykFe_gSD_VWk04LWNIsoZiQJ8RcB?usp=sharing
+
+
 
 
 *******
