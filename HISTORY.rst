@@ -2,6 +2,12 @@
 History
 *******
 
+0.5.2 (2021-09-26)
+==================
+
+* switch to numpyro==0.6.0 to avoid problems in github workflows
+* updated alias table
+
 0.5.1 (2021-06-23)
 ==================
 
