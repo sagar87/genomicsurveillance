@@ -64,10 +64,11 @@ class MultiLineageClockReset(Model, Lineage):
         rho_loc: float = np.log(10.0),
         rho_scale: float = 1.0,
         week: bool = False,
-        auto_correlation: float = 0.5,
+        auto_correlation=None,
         linearize: bool = False,
         offset: int = 21,
         independent_clock: bool = False,
+        ancestor_matrix=False,
         posterior=None,
         model_kwargs: dict = dict(
             rng_key=4587, handler="SVI", num_epochs=30000, lr=0.001, num_samples=1000
@@ -114,6 +115,7 @@ class MultiLineageClockReset(Model, Lineage):
 
         self.rho_loc = rho_loc
         self.rho_scale = rho_scale
+        self.ancestor_matrix = False
 
         self.offset = offset
         self.independent_clock = independent_clock
@@ -316,6 +318,9 @@ class MultiLineageClockReset(Model, Lineage):
             b = npy.deterministic("b", (b_offset + bc0[: self.num_lin]) / self.SCALE)
         else:
             b = bc0[: self.num_lin] / self.SCALE
+
+        if self.ancestor_matrix:
+            b = self.ancestor_matrix @ b
 
         # sample non-centered c
         c0 = bc0[self.num_lin :]
