@@ -64,10 +64,11 @@ class MultiLineageClockReset(Model, Lineage):
         rho_loc: float = np.log(10.0),
         rho_scale: float = 1.0,
         week: bool = False,
-        auto_correlation: float = 0.5,
+        auto_correlation=None,
         linearize: bool = False,
         offset: int = 21,
         independent_clock: bool = False,
+        ancestor_matrix=None,
         posterior=None,
         model_kwargs: dict = dict(
             rng_key=4587, handler="SVI", num_epochs=30000, lr=0.001, num_samples=1000
@@ -91,6 +92,7 @@ class MultiLineageClockReset(Model, Lineage):
             basis=basis,
             auto_correlation=auto_correlation,
             linearize=linearize,
+            ancestor_matrix=ancestor_matrix,
             posterior=posterior,
         )
 
@@ -328,16 +330,35 @@ class MultiLineageClockReset(Model, Lineage):
         )
         c = c_offset + c0
 
-        b1 = npy.deterministic(
-            Sites.B1,
-            self._pad_array(
-                self._expand_array(
-                    (self.missing_lineages * b).reshape(self.num_ltla_lin, 1, -1),
-                    index[self.nan_idx, :, :],
-                    (self.num_ltla, 1, self.num_lin),
-                )
-            ),
-        )
+        if self.ancestor_matrix is not None:
+            b1 = npy.deterministic(
+                Sites.B1,
+                jnp.einsum(
+                    "ij,lmj->lmi",
+                    self.ancestor_matrix,
+                    self._pad_array(
+                        self._expand_array(
+                            (self.missing_lineages * b).reshape(
+                                self.num_ltla_lin, 1, -1
+                            ),
+                            index[self.nan_idx, :, :],
+                            (self.num_ltla, 1, self.num_lin),
+                        )
+                    ),
+                ),
+            )
+        else:
+            b1 = npy.deterministic(
+                Sites.B1,
+                self._pad_array(
+                    self._expand_array(
+                        (self.missing_lineages * b).reshape(self.num_ltla_lin, 1, -1),
+                        index[self.nan_idx, :, :],
+                        (self.num_ltla, 1, self.num_lin),
+                    )
+                ),
+            )
+
         c1 = npy.deterministic(
             Sites.C1,
             self._pad_array(

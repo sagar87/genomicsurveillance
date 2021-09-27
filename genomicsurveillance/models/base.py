@@ -29,6 +29,7 @@ class Lineage(object):
         basis=None,
         auto_correlation=None,
         linearize=False,
+        ancestor_matrix=None,
         posterior=None,
     ):
         self.tau = tau
@@ -39,6 +40,7 @@ class Lineage(object):
         self.posterior = Posterior(posterior) if posterior is not None else posterior
         self.auto_correlation = auto_correlation
         self.linearize = linearize
+        self.ancestor_matrix = ancestor_matrix
 
         if basis is None:
             self.knots = NowCastKnots(cases.shape[-1])
@@ -254,6 +256,9 @@ class Lineage(object):
     def get_transmissibility(self, rebase=None):
         b = self.posterior.dist(Sites.B0)
         b = np.concatenate([b, np.zeros((b.shape[0], 1))], -1)
+
+        if self.ancestor_matrix is not None:
+            b = np.einsum("ij,lj->li", self.ancestor_matrix, b)
 
         if rebase is not None:
             b = b - b[..., rebase].reshape(-1, 1)
