@@ -10,6 +10,17 @@ def get_aliases(aliases: bytes = Files.ALIASES):
     return dict(zip(aliases.alias.tolist(), aliases.lineage.tolist()))
 
 
+def get_merged_delta_aliases(aliases: bytes = Files.ALIASES):
+    aliases = pd.read_csv(io.BytesIO(aliases))
+    aliases = dict(zip(aliases.alias.tolist(), aliases.lineage.tolist()))
+
+    for k, v in aliases.items():
+        if k.startswith("AY."):
+            aliases[k] = "B.1.617.2"
+
+    return aliases
+
+
 def get_meta_data(meta_data: bytes = Files.META_DATA):
     """
     Load the UK meta data.

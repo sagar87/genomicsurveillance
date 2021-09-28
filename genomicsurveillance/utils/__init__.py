@@ -1,4 +1,5 @@
 from .epiestim import epiestim_discretise_serial_interval, epiestim_R, infection_to_test
+from .helper import time_to_str
 from .knots import (
     KnotList,
     Knots,
@@ -14,6 +15,7 @@ __all__ = [
     "epiestim_discretise_serial_interval",
     "create_date_list",
     "create_spline_basis",
+    "time_to_str",
     "Knots",
     "KnotList",
     "sort_lineages",
