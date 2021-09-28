@@ -8,13 +8,14 @@ from .knots import (
     create_date_list,
     create_spline_basis,
 )
-from .lineages import preprocess_lineage_tensor, sort_lineages
+from .lineages import create_ancestor_matrix, preprocess_lineage_tensor, sort_lineages
 
 __all__ = [
     "epiestim_R",
     "epiestim_discretise_serial_interval",
     "create_date_list",
     "create_spline_basis",
+    "create_ancestor_matrix",
     "time_to_str",
     "Knots",
     "KnotList",
