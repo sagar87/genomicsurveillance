@@ -164,3 +164,46 @@ def preprocess_lineage_tensor(
     print("Dropped lineages", droped_lineages)
     lineage_tensor_red = aggregate_tensor(lineage_tensor, cluster)
     return merged_lineages, lineage_tensor_red, cluster
+
+
+def create_ancestor_matrix(lin_names, families=None):
+    ancestor_matrix = np.zeros((len(lin_names), len(lin_names)))
+    if families is None:
+        for i, r in enumerate(range(ancestor_matrix.shape[0])):
+            this_lineage = lin_names[r]
+            for c in range(ancestor_matrix.shape[1]):
+                other_lineage = lin_names[c]
+                lin_list = this_lineage.split(".")
+                lin_regex = (
+                    r"^"
+                    + lin_list[0]
+                    + (r"\." if len(lin_list) > 1 else r"")
+                    + r"\.".join(lin_list[1:])
+                    + r"(?=\.|$)"
+                )
+                m = re.match(lin_regex, other_lineage)
+
+                if m:
+                    ancestor_matrix[r, c] = 1
+    else:
+        for i, r in enumerate(range(ancestor_matrix.shape[0])):
+            this_lineage = lin_names[r]
+            for j, c in enumerate(range(ancestor_matrix.shape[1])):
+                if i == j:
+                    ancestor_matrix[r, c] = 1
+                if this_lineage in families:
+                    other_lineage = lin_names[c]
+                    lin_list = this_lineage.split(".")
+                    lin_regex = (
+                        r"^"
+                        + lin_list[0]
+                        + (r"\." if len(lin_list) > 1 else r"")
+                        + r"\.".join(lin_list[1:])
+                        + r"(?=\.|$)"
+                    )
+                    m = re.match(lin_regex, other_lineage)
+
+                    if m:
+                        ancestor_matrix[r, c] = 1
+
+    return ancestor_matrix.T
