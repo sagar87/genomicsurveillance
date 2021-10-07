@@ -3,11 +3,13 @@ import io
 import pandas as pd
 
 from genomicsurveillance.config import Files
+from urllib.request import urlopen
+import json
 
-
-def get_aliases(aliases: bytes = Files.ALIASES):
-    aliases = pd.read_csv(io.BytesIO(aliases))
-    return dict(zip(aliases.alias.tolist(), aliases.lineage.tolist()))
+def get_aliases():
+    aliases = json.loads(urlopen("https://github.com/cov-lineages/pango-designation/raw/master/pango_designation/alias_key.json").read().decode())
+    aliases['XA'] = 'B.1.1.7.177' #small hack
+    return aliases
 
 
 def get_merged_delta_aliases(aliases: bytes = Files.ALIASES):
