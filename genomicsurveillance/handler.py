@@ -166,7 +166,8 @@ class SVIHandler(Handler):
     :param model: A numpyro model.
     :param guide: A numpyro guide.
     :param loss: Loss function, defaults to Trace_ELBO.
-    :param lr: Learning rate, defaults to 0.01.
+    :param lr: Learning rate, defaults to 0.001.
+    :param lrd: Learning rate decay per step, defaults to 1.0 (no decay)
     :param rng_key: Random seed, defaults to 254.
     :param num_epochs: Number of epochs to train the model, defaults to 5000.
     :param num_samples: Number of posterior samples.
@@ -181,8 +182,9 @@ class SVIHandler(Handler):
         model: Model,
         guide: Guide,
         loss: Trace_ELBO = Trace_ELBO(num_particles=1),
-        optimizer: optim.optimizers.optimizer = optim.Adam,
+        optimizer: optim.optimizers.optimizer = optim.ClippedAdam,
         lr: float = 0.001,
+        lrd: float = 1.0,
         rng_key: int = 254,
         num_epochs: int = 30000,
         num_samples: int = 1000,
@@ -193,7 +195,7 @@ class SVIHandler(Handler):
         self.model = model
         self.guide = guide
         self.loss = loss
-        self.optimizer = optimizer(step_size=lr)
+        self.optimizer = optimizer(step_size=lambda x: lr * lrd**x)
         self.rng_key = random.PRNGKey(rng_key)
 
         self.svi = SVI(self.model, self.guide, self.optimizer, loss=self.loss)
