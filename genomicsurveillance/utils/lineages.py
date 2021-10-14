@@ -36,19 +36,26 @@ def sort_lineages(lineage_list, pattern=re.compile(r"[A-Z](\.\d+)*$")):
     return sorted_identifier, other_identifier
 
 
-def alias_lineages(lineage_list, alias, anti_alias=False):
+
+def alias(lineage, aliases, anti_alias=False):
+    for a, v in aliases.items():
+        if not a in ["A", "B"]:
+            if not anti_alias:
+                a, v = v, a
+            lineage_alias = re.sub("^"+re.sub("\.","\.", a)+"(?=\\.)", v, lineage)
+    return lineage_alias
+
+
+def alias_lineages(lineage_list, aliases, anti_alias=False):
     assert (
-        len([a for a in alias.values() if a in lineage_list]) == 0
+        len([a for a in aliases.values() if a in lineage_list]) == 0
     ), "Aliases are not allowed to map to lineages in lineage_list!"
 
-    assert len(list(alias.values())) == len(
-        set(alias.values())
+    assert len(list(aliases.values())) == len(
+        set(aliases.values())
     ), "Two or more aliases are not allowed to map to the same lineage!"
 
-    if anti_alias:
-        alias = {v: k for k, v in alias.items()}
-    return [alias[lineage] if lineage in alias else lineage for lineage in lineage_list]
-
+    return [alias(lineage) for lineage in lineage_list]
 
 def merge_lineages(
     lineage_identifier,
